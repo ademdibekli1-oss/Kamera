@@ -1,28 +1,15 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-body{font-family:system-ui;padding:20px;background:#fff;color:#333}
-h1{color:#c8102e}
-button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:6px;cursor:pointer}
-</style>
-</head>
-<body>
-<!DOCTYPE html>
-<html lang="tr">
-<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0b0f14">
-<title>Keçi / Koyun Tespit — Pro</title>
+<title>Keçi / Koyun Tespit — Pro v3</title>
 <style>
   :root{
     --bg:#0a0e13; --panel:#111823; --panel2:#0e1520; --line:#1e293b;
     --fg:#e6eef7; --mut:#7d93a8; --acc:#22d3ee; --acc2:#0ea5e9;
-    --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
-    --radius:12px;
+    --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --radius:12px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
@@ -30,16 +17,13 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
     overscroll-behavior:none;user-select:none}
   #app{position:fixed;inset:0;display:flex;flex-direction:column}
 
-  /* ============ VIEWPORT ============ */
   #viewport{flex:1;position:relative;overflow:hidden;background:#000;
     display:flex;align-items:center;justify-content:center;touch-action:none}
   #stage{position:relative;transform-origin:center center;will-change:transform}
-  #video{display:block;width:100%;height:100%;object-fit:fill;
-    transition:filter .25s ease}
+  #video{display:block;width:100%;height:100%;object-fit:fill;transition:filter .25s ease}
   #video.night{filter:brightness(1.55) contrast(1.35) saturate(1.15)}
   #overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 
-  /* ============ HUD ============ */
   #hud{position:absolute;top:0;left:0;padding:10px;display:flex;gap:6px;
     flex-wrap:wrap;pointer-events:none;font-variant-numeric:tabular-nums;max-width:calc(100% - 62px)}
   .chip{background:rgba(10,14,19,.78);border:1px solid var(--line);
@@ -50,7 +34,6 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
   .chip.warn b{color:var(--warn)}
   .chip.err b{color:var(--err)}
 
-  /* ============ QUICKBAR ============ */
   #quickbar{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:6px}
   .qbtn{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);
     background:rgba(10,14,19,.82);color:var(--fg);font-size:18px;cursor:pointer;
@@ -61,10 +44,8 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
     box-shadow:0 0 12px rgba(34,211,238,.5)}
   .qbtn:disabled{opacity:.35;cursor:not-allowed}
 
-  /* ============ PANEL ============ */
   #panel{background:var(--panel);border-top:1px solid var(--line);
     padding-bottom:calc(env(safe-area-inset-bottom))}
-
   .tabs{display:flex;border-bottom:1px solid var(--line);background:var(--panel2)}
   .tab{flex:1;padding:10px;background:none;border:none;color:var(--mut);
     font-size:13px;font-weight:600;cursor:pointer;position:relative;transition:color .15s}
@@ -80,12 +61,13 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
   .row{display:flex;align-items:center;gap:10px;margin:8px 0}
   .row label{flex:0 0 120px;color:var(--mut);font-size:12px}
   .row input[type=range]{flex:1;accent-color:var(--acc);height:22px;background:transparent}
+  .row input[type=text]{flex:1;background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+    border-radius:8px;padding:8px 10px;font-size:12px;font-family:monospace}
   .row output{flex:0 0 62px;text-align:right;font-size:12px;
     color:var(--acc);font-variant-numeric:tabular-nums;font-weight:600}
   .row select{flex:1;background:var(--panel2);color:var(--fg);border:1px solid var(--line);
     border-radius:8px;padding:8px 10px;font-size:13px}
 
-  /* Toggle switch */
   .switch{position:relative;width:44px;height:24px;background:#1e293b;border-radius:999px;
     cursor:pointer;transition:background .2s;flex-shrink:0}
   .switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;
@@ -95,13 +77,11 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
 
   .btns{display:flex;gap:8px;margin-top:10px}
   button.action{flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);
-    background:#1a2330;color:var(--fg);font-size:13px;font-weight:600;cursor:pointer;
-    transition:all .15s}
+    background:#1a2330;color:var(--fg);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
   button.action:active{transform:scale(.97)}
   button.action.primary{background:var(--acc);color:#03242b;border-color:transparent}
   button.action.danger{background:#3a1e1e;color:#fca5a5;border-color:#5a2929}
 
-  /* Stats list */
   .stats-list{display:flex;flex-direction:column;gap:6px;margin:8px 0}
   .stat-row{display:flex;align-items:center;justify-content:space-between;
     padding:8px 12px;background:var(--panel2);border-radius:8px;
@@ -111,14 +91,11 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
     border-style:dashed;border:1px dashed var(--line);background:transparent}
 
   .session-info{display:flex;gap:8px;margin:8px 0}
-  .info-box{flex:1;background:var(--panel2);border-radius:8px;padding:8px 10px;
-    text-align:center}
-  .info-box .lbl{font-size:10.5px;color:var(--mut);text-transform:uppercase;
-    letter-spacing:.4px}
+  .info-box{flex:1;background:var(--panel2);border-radius:8px;padding:8px 10px;text-align:center}
+  .info-box .lbl{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
   .info-box .val{font-size:16px;font-weight:700;color:var(--acc);margin-top:2px;
     font-variant-numeric:tabular-nums}
 
-  /* ============ SPLASH ============ */
   #splash{position:absolute;inset:0;display:flex;flex-direction:column;
     align-items:center;justify-content:center;gap:16px;padding:28px;text-align:center;
     background:radial-gradient(circle at center,rgba(10,14,19,.96),rgba(5,8,12,.99));
@@ -126,39 +103,31 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
   #splash h1{font-size:20px;margin:0;font-weight:700}
   #splash p{margin:0;color:var(--mut);font-size:13px;max-width:340px;line-height:1.6}
   #splash .icon{font-size:52px;margin-bottom:4px}
-  #splash button{flex:none;padding:13px 32px;font-size:15px;
-    max-width:260px;width:100%}
+  #splash button{flex:none;padding:13px 32px;font-size:15px;max-width:280px;width:100%}
   #splashErr{color:var(--err);font-size:12.5px;min-height:16px}
 
-  /* Spinner */
   .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(34,211,238,.25);
     border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;
     vertical-align:middle;margin-right:6px}
   @keyframes spin{to{transform:rotate(360deg)}}
 
-  /* ROI overlay cursor */
-  #viewport.roi-mode{cursor:crosshair}
-  #viewport.roi-mode::before{content:"";position:absolute;inset:0;
-    border:3px dashed var(--acc);pointer-events:none;
-    animation:pulse 1.5s ease-in-out infinite}
-  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
-
-  /* Toast */
   #toast{position:fixed;left:50%;bottom:180px;transform:translateX(-50%) translateY(20px);
     background:rgba(30,41,59,.95);color:var(--fg);padding:10px 18px;border-radius:999px;
     font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:all .3s;
     backdrop-filter:blur(10px);border:1px solid var(--line);z-index:100;white-space:nowrap}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-  /* Notification badge */
   @keyframes flash{0%{background:var(--ok)}100%{background:rgba(10,14,19,.78)}}
   .chip.flash{animation:flash .6s ease-out}
+
+  .model-note{font-size:11px;color:var(--mut);margin:4px 0 8px;line-height:1.5;
+    padding:8px 10px;background:var(--panel2);border-radius:8px;border-left:3px solid var(--warn)}
+  .hidden{display:none!important}
 </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- ================= VIEWPORT ================= -->
   <div id="viewport">
     <div id="stage">
       <video id="video" playsinline muted autoplay></video>
@@ -182,14 +151,13 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
 
     <div id="splash">
       <div class="icon">🐐</div>
-      <h1>Keçi / Koyun Tespit — Pro</h1>
-      <p>Zoom, ROI tabanlı sayım, tür ayrımı, mesafe ölçümü, gece modu, fotoğraf ve CSV raporu.</p>
-      <button class="action primary" id="btnStart" style="flex:none;padding:13px 32px;font-size:15px;max-width:260px;width:100%">Kamerayı Başlat</button>
+      <h1>Keçi / Koyun Tespit — Pro v3</h1>
+      <p>Gerçek keçi/koyun ayrımı için özel model desteği, ROI sayımı, mesafe ölçümü ve daha fazlası.</p>
+      <button class="action primary" id="btnStart">Kamerayı Başlat</button>
       <p id="splashErr"></p>
     </div>
   </div>
 
-  <!-- ================= PANEL ================= -->
   <div id="panel">
     <div class="tabs">
       <button class="tab active" data-tab="detect">Tespit</button>
@@ -197,8 +165,35 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
       <button class="tab" data-tab="stats">İstatistik</button>
     </div>
 
-    <!-- ----- TESPİT ----- -->
     <div class="tab-content active" data-content="detect">
+      <div class="row">
+        <label>Model</label>
+        <select id="modelType">
+          <option value="coco">COCO-SSD (hızlı — keçi/koyun ayrımı yok)</option>
+          <option value="custom">Özel YOLO (keçi/koyun ayrımı)</option>
+        </select>
+      </div>
+
+      <div id="customModelFields" class="hidden">
+        <div class="row">
+          <label>Model URL</label>
+          <input id="customModelUrl" type="text"
+            placeholder="https://.../model.json">
+        </div>
+        <div class="row">
+          <label>Etiketler</label>
+          <input id="customLabels" type="text" value="goat,sheep"
+            placeholder="goat,sheep">
+        </div>
+        <div class="model-note">
+          💡 Roboflow Universe’de <b>“goat sheep detection”</b> arayın. Model sayfasında
+          <b>Deploy → TensorFlow.js</b> yolundan <code>model.json</code> bağlantısını kopyalayın.
+        </div>
+        <div class="btns">
+          <button class="action" id="btnTestModel">Modeli Test Et</button>
+        </div>
+      </div>
+
       <div class="row">
         <label>Güven eşiği</label>
         <input id="score" type="range" min="0.15" max="0.9" step="0.05" value="0.35">
@@ -210,20 +205,11 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
         <output id="confirmOut">3</output>
       </div>
       <div class="row">
-        <label>Model</label>
-        <select id="model">
-          <option value="lite_mobilenet_v2">Lite MobileNet v2 (hızlı)</option>
-          <option value="mobilenet_v2">MobileNet v2 (dengeli)</option>
-          <option value="mobilenet_v1">MobileNet v1</option>
-        </select>
-      </div>
-      <div class="row">
         <label>Sesli uyarı</label>
-        <div class="switch on" id="swSound" data-toggle="sound"></div>
+        <div class="switch on" id="swSound"></div>
       </div>
     </div>
 
-    <!-- ----- KAMERA ----- -->
     <div class="tab-content" data-content="camera">
       <div class="row">
         <label>Zoom</label>
@@ -245,7 +231,6 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
       </div>
     </div>
 
-    <!-- ----- İSTATİSTİK ----- -->
     <div class="tab-content" data-content="stats">
       <div class="session-info">
         <div class="info-box"><div class="lbl">Toplam</div><div class="val" id="statTotal">0</div></div>
@@ -268,36 +253,42 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
 <!-- TensorFlow.js + COCO-SSD -->
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+<!-- YOLO-TS (özel model için) -->
+<script src="https://cdn.jsdelivr.net/npm/yolo-ts@latest/dist/yolo.umd.js"></script>
 
 <script>
 (() => {
   "use strict";
 
   /* ==========================================================
-     1) SABİTLER & TÜR BİLGİSİ
+     SABİTLER
      ========================================================== */
   const SPECIES_INFO = {
-    sheep:    { name: 'Koyun',  emoji: '🐑', color: '#22c55e', countable: true  },
-    cow:      { name: 'İnek',   emoji: '🐄', color: '#eab308', countable: true  },
-    horse:    { name: 'At',     emoji: '🐴', color: '#f97316', countable: true  },
-    dog:      { name: 'Köpek',  emoji: '🐕', color: '#a855f7', countable: true  },
-    cat:      { name: 'Kedi',   emoji: '🐈', color: '#ec4899', countable: true  },
-    bird:     { name: 'Kuş',    emoji: '🐦', color: '#06b6d4', countable: true  },
-    bear:     { name: 'Ayı',    emoji: '🐻', color: '#ef4444', countable: true  },
-    elephant: { name: 'Fil',    emoji: '🐘', color: '#64748b', countable: true  },
-    zebra:    { name: 'Zebra',  emoji: '🦓', color: '#0ea5e9', countable: true  },
-    giraffe:  { name: 'Zürafa', emoji: '🦒', color: '#f59e0b', countable: true  },
+    goat:     { name: 'Keçi',   emoji: '🐐', color: '#22c55e' },
+    sheep:    { name: 'Koyun',  emoji: '🐑', color: '#a3e635' },
+    cow:      { name: 'İnek',   emoji: '🐄', color: '#eab308' },
+    horse:    { name: 'At',     emoji: '🐴', color: '#f97316' },
+    dog:      { name: 'Köpek',  emoji: '🐕', color: '#a855f7' },
+    cat:      { name: 'Kedi',   emoji: '🐈', color: '#ec4899' },
+    bird:     { name: 'Kuş',    emoji: '🐦', color: '#06b6d4' },
+    bear:     { name: 'Ayı',    emoji: '🐻', color: '#ef4444' },
+    elephant: { name: 'Fil',    emoji: '🐘', color: '#64748b' },
+    zebra:    { name: 'Zebra',  emoji: '🦓', color: '#0ea5e9' },
+    giraffe:  { name: 'Zürafa', emoji: '🦒', color: '#f59e0b' },
   };
-  const COUNTABLE = Object.keys(SPECIES_INFO);
+  const COUNTABLE_COCO = ['sheep','cow','horse','dog','cat','bird','bear','elephant','zebra','giraffe'];
 
-  const TRACK_TTL   = 1500;   // ms — iz bu süre görünmezse silinir
-  const TRACK_IOU   = 0.25;   // minimum IoU eşleşme
-  const DETECT_HZ   = 10;     // saniyedeki tespit sayısı
+  const TRACK_TTL = 1500;
+  const TRACK_IOU = 0.25;
+  const DETECT_HZ = 10;
 
   /* ==========================================================
-     2) DURUM
+     DURUM
      ========================================================== */
-  let model = null;
+  let cocoModel = null;
+  let yoloModel = null;
+  let yoloLabels = [];
+  let activeModelType = 'coco';      // 'coco' | 'custom'
   let stream = null;
   let running = false;
   let zoom = 1;
@@ -305,29 +296,29 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
   let torchOn = false, torchAvailable = false;
   let gridOn = false, nightOn = false, soundOn = true;
   let confirmFrames = 3;
-  let roi = null;              // {x,y,w,h} normalize
-  let roiMode = 'none';        // 'none' | 'drawing'
+  let roi = null;
+  let roiMode = 'none';
   let roiStart = null, roiCurrent = null;
 
   let tracks = [];
   let nextTrackId = 1;
-  let speciesCounts = {};      // {sheep: 5, cow: 2, ...}
+  let speciesCounts = {};
   let totalCount = 0;
   let sessionStart = 0;
 
   let lastDetect = 0;
   let fpsSmooth = 0;
-  let lastDetections = [];     // son çizim için sakla
+  let lastDetections = [];
 
   /* ==========================================================
-     3) DOM
+     DOM
      ========================================================== */
   const $ = id => document.getElementById(id);
   const els = {
     viewport: $('viewport'), stage: $('stage'),
     video: $('video'), overlay: $('overlay'),
     splash: $('splash'), splashErr: $('splashErr'),
-    btnStart: $('btnStart'), btnStop: null,
+    btnStart: $('btnStart'),
     hudTotal: $('hudTotal'), hudVisible: $('hudVisible'), hudFps: $('hudFps'),
     chipStatus: $('chipStatus'), chipTotal: $('chipTotal'),
     zoom: $('zoom'), zoomOut: $('zoomOut'),
@@ -335,12 +326,15 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
     confirm: $('confirm'), confirmOut: $('confirmOut'),
     width: $('width'), widthOut: $('widthOut'),
     fov: $('fov'), fovOut: $('fovOut'),
-    modelSel: $('model'),
+    modelType: $('modelType'),
+    customModelFields: $('customModelFields'),
+    customModelUrl: $('customModelUrl'),
+    customLabels: $('customLabels'),
+    btnTestModel: $('btnTestModel'),
     swSound: $('swSound'),
     btnTorch: $('btnTorch'), btnGrid: $('btnGrid'),
     btnNight: $('btnNight'), btnRoi: $('btnRoi'), btnShot: $('btnShot'),
-    btnReset: $('btnReset'), btnCsv: $('btnCsv'),
-    btnResetZoom: $('btnResetZoom'),
+    btnReset: $('btnReset'), btnCsv: $('btnCsv'), btnResetZoom: $('btnResetZoom'),
     statTotal: $('statTotal'), statTime: $('statTime'), statTracks: $('statTracks'),
     statsList: $('statsList'),
     toast: $('toast'),
@@ -348,7 +342,7 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
   const ctx = els.overlay.getContext('2d');
 
   /* ==========================================================
-     4) YARDIMCILAR
+     YARDIMCILAR
      ========================================================== */
   const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
   const nowMs = () => performance.now();
@@ -377,19 +371,17 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
   }
 
   /* ==========================================================
-     5) YERLEŞİM
+     YERLEŞİM
      ========================================================== */
   function layout(){
     const vw = els.viewport.clientWidth;
     const vh = els.viewport.clientHeight;
     const ar = (els.video.videoWidth && els.video.videoHeight)
       ? els.video.videoWidth / els.video.videoHeight : 4/3;
-
     let w = vw, h = w / ar;
     if (h > vh){ h = vh; w = h * ar; }
     els.stage.style.width  = w + 'px';
     els.stage.style.height = h + 'px';
-
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     els.overlay.width  = Math.round(w * dpr);
     els.overlay.height = Math.round(h * dpr);
@@ -400,15 +392,11 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
   els.video.addEventListener('loadedmetadata', layout);
 
   /* ==========================================================
-     6) KAMERA
+     KAMERA
      ========================================================== */
   async function startCamera(){
     stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: 'environment' },
-        width:  { ideal: 1920 },
-        height: { ideal: 1080 },
-      },
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
       audio: false
     });
     els.video.srcObject = stream;
@@ -416,7 +404,6 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
 
     const track = stream.getVideoTracks()[0];
     const caps = track.getCapabilities ? track.getCapabilities() : {};
-
     if (caps.zoom){
       nativeZoom = caps.zoom;
       els.zoom.min = nativeZoom.min;
@@ -431,7 +418,6 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
     }
     torchAvailable = !!caps.torch;
     els.btnTorch.disabled = !torchAvailable;
-
     updateZoomLabel();
     layout();
   }
@@ -440,11 +426,8 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
     zoom = clamp(v, +els.zoom.min, +els.zoom.max);
     els.zoom.value = zoom;
     updateZoomLabel();
-
     if (nativeZoom){
-      try {
-        await stream.getVideoTracks()[0].applyConstraints({ advanced: [{ zoom }] });
-      } catch(_){}
+      try { await stream.getVideoTracks()[0].applyConstraints({ advanced: [{ zoom }] }); } catch(_){}
       els.stage.style.transform = 'none';
     } else {
       els.stage.style.transform = `scale(${zoom})`;
@@ -453,28 +436,19 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
   }
   function updateZoomLabel(){ els.zoomOut.textContent = zoom.toFixed(1) + '×'; }
 
-  /* ---- Pinch zoom ---- */
+  /* Pinch zoom */
   let pinchStartDist = 0, pinchStartZoom = 1;
   const touchDist = t => Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
-
   els.viewport.addEventListener('touchstart', e => {
     if (roiMode === 'drawing') return;
-    if (e.touches.length === 2){
-      pinchStartDist = touchDist(e.touches);
-      pinchStartZoom = zoom;
-    }
+    if (e.touches.length === 2){ pinchStartDist = touchDist(e.touches); pinchStartZoom = zoom; }
   }, { passive:true });
-
   els.viewport.addEventListener('touchmove', e => {
     if (roiMode === 'drawing') return;
-    if (e.touches.length === 2 && pinchStartDist > 0){
-      setZoom(pinchStartZoom * (touchDist(e.touches) / pinchStartDist));
-    }
+    if (e.touches.length === 2 && pinchStartDist > 0) setZoom(pinchStartZoom * (touchDist(e.touches) / pinchStartDist));
   }, { passive:true });
-
   els.viewport.addEventListener('touchend', () => { pinchStartDist = 0; });
 
-  /* ---- Torch ---- */
   async function toggleTorch(){
     if (!torchAvailable) return toast('Bu cihazda flaş yok');
     torchOn = !torchOn;
@@ -486,72 +460,52 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
   }
 
   /* ==========================================================
-     7) ROI (Sayım Bölgesi)
+     ROI
      ========================================================== */
   function setRoiMode(mode){
     roiMode = mode;
-    els.viewport.classList.toggle('roi-mode', mode === 'drawing');
+    els.viewport.style.cursor = mode === 'drawing' ? 'crosshair' : '';
     els.btnRoi.classList.toggle('on', mode === 'drawing' || !!roi);
-    if (mode === 'drawing'){
-      toast('Sayım bölgesi çizmek için sürükle', 2200);
-    }
+    if (mode === 'drawing') toast('Sayım bölgesi çizmek için sürükle', 2200);
   }
 
   function getPoint(e){
     const r = els.stage.getBoundingClientRect();
     const p = e.touches ? e.touches[0] : e;
-    return {
-      x: clamp((p.clientX - r.left) / r.width, 0, 1),
-      y: clamp((p.clientY - r.top)  / r.height, 0, 1),
-    };
+    return { x: clamp((p.clientX - r.left) / r.width, 0, 1), y: clamp((p.clientY - r.top) / r.height, 0, 1) };
   }
-
   function startRoi(e){
     if (roiMode !== 'drawing') return;
     e.preventDefault();
-    roiStart = getPoint(e);
-    roiCurrent = { ...roiStart };
+    roiStart = getPoint(e); roiCurrent = { ...roiStart };
   }
   function moveRoi(e){
     if (!roiStart) return;
-    e.preventDefault();
-    roiCurrent = getPoint(e);
-    redraw();
+    e.preventDefault(); roiCurrent = getPoint(e); redraw();
   }
   function endRoi(e){
     if (!roiStart) return;
     e.preventDefault();
-    const x1 = Math.min(roiStart.x, roiCurrent.x);
-    const y1 = Math.min(roiStart.y, roiCurrent.y);
-    const x2 = Math.max(roiStart.x, roiCurrent.x);
-    const y2 = Math.max(roiStart.y, roiCurrent.y);
-    if ((x2-x1) > 0.05 && (y2-y1) > 0.05){
-      roi = { x: x1, y: y1, w: x2-x1, h: y2-y1 };
-      saveSettings();
-      toast('Bölge kaydedildi');
-    }
-    roiStart = null; roiCurrent = null;
-    setRoiMode('none');
-    redraw();
+    const x1 = Math.min(roiStart.x, roiCurrent.x), y1 = Math.min(roiStart.y, roiCurrent.y);
+    const x2 = Math.max(roiStart.x, roiCurrent.x), y2 = Math.max(roiStart.y, roiCurrent.y);
+    if ((x2-x1) > 0.05 && (y2-y1) > 0.05){ roi = { x: x1, y: y1, w: x2-x1, h: y2-y1 }; saveSettings(); toast('Bölge kaydedildi'); }
+    roiStart = null; roiCurrent = null; setRoiMode('none'); redraw();
   }
-
-  els.stage.addEventListener('mousedown',  startRoi);
-  els.stage.addEventListener('mousemove',  moveRoi);
-  window.addEventListener('mouseup',       endRoi);
+  els.stage.addEventListener('mousedown', startRoi);
+  els.stage.addEventListener('mousemove', moveRoi);
+  window.addEventListener('mouseup', endRoi);
   els.stage.addEventListener('touchstart', startRoi, { passive:false });
-  els.stage.addEventListener('touchmove',  moveRoi,  { passive:false });
-  els.stage.addEventListener('touchend',   endRoi,   { passive:false });
+  els.stage.addEventListener('touchmove', moveRoi, { passive:false });
+  els.stage.addEventListener('touchend', endRoi, { passive:false });
 
   function inRoi(bbox){
     if (!roi) return true;
-    const cx = bbox[0] + bbox[2]/2;
-    const cy = bbox[1] + bbox[3]/2;
-    return cx >= roi.x && cx <= roi.x + roi.w &&
-           cy >= roi.y && cy <= roi.y + roi.h;
+    const cx = bbox[0] + bbox[2]/2, cy = bbox[1] + bbox[3]/2;
+    return cx >= roi.x && cx <= roi.x + roi.w && cy >= roi.y && cy <= roi.y + roi.h;
   }
 
   /* ==========================================================
-     8) MESAFE
+     MESAFE
      ========================================================== */
   function focalPixels(){
     const fovRad = (+els.fov.value) * Math.PI / 180;
@@ -560,14 +514,13 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
   }
   function estimateDistance(pxWidth){
     if (!pxWidth || pxWidth <= 0) return null;
-    const W = +els.width.value;
-    const F = focalPixels();
+    const W = +els.width.value, F = focalPixels();
     const d = (W * F) / pxWidth;
     return isFinite(d) ? d : null;
   }
 
   /* ==========================================================
-     9) TAKİP
+     TAKİP
      ========================================================== */
   function predictBbox(tr, dt){
     const [x,y,w,h] = tr.bbox;
@@ -577,58 +530,38 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
 
   function updateTracks(dets, now){
     const matched = new Set();
-
     for (const d of dets){
       let best = null, bestScore = TRACK_IOU;
       for (const tr of tracks){
         if (matched.has(tr.id)) continue;
         const dt = (now - tr.last) / 1000;
-        const predScore  = iou(d.bbox, predictBbox(tr, dt));
-        const currScore  = iou(d.bbox, tr.bbox);
-        const score = Math.max(predScore, currScore);
+        const score = Math.max(iou(d.bbox, predictBbox(tr, dt)), iou(d.bbox, tr.bbox));
         if (score > bestScore){ bestScore = score; best = tr; }
       }
-
       if (best){
         const dt = Math.max(0.05, (now - best.last) / 1000);
-        const nvx = (d.bbox[0] - best.bbox[0]) / dt;
-        const nvy = (d.bbox[1] - best.bbox[1]) / dt;
         best.velocity = [
-          0.65 * best.velocity[0] + 0.35 * nvx,
-          0.65 * best.velocity[1] + 0.35 * nvy,
+          0.65 * best.velocity[0] + 0.35 * (d.bbox[0] - best.bbox[0]) / dt,
+          0.65 * best.velocity[1] + 0.35 * (d.bbox[1] - best.bbox[1]) / dt,
         ];
-        best.bbox = d.bbox;
-        best.last = now;
-        best.hits++;
-        best.label = d.label;
-        best.dist = d.dist;
-        best.inRoi = d.inRoi;
-        matched.add(best.id);
-        d.trackId = best.id;
+        best.bbox = d.bbox; best.last = now; best.hits++;
+        best.label = d.label; best.dist = d.dist; best.inRoi = d.inRoi;
+        matched.add(best.id); d.trackId = best.id;
       } else {
-        const tr = {
-          id: nextTrackId++, bbox: d.bbox, velocity: [0,0],
-          last: now, hits: 1, label: d.label, dist: d.dist,
-          inRoi: d.inRoi, counted: false, trail: [],
-        };
-        tracks.push(tr);
-        d.trackId = tr.id;
-        matched.add(tr.id);
+        const tr = { id: nextTrackId++, bbox: d.bbox, velocity: [0,0], last: now, hits: 1,
+                     label: d.label, dist: d.dist, inRoi: d.inRoi, counted: false };
+        tracks.push(tr); d.trackId = tr.id; matched.add(tr.id);
       }
     }
-
-    // Süresi dolanları sil
     tracks = tracks.filter(tr => now - tr.last < TRACK_TTL);
 
-    // Onaylananları say
     for (const tr of tracks){
       if (!tr.counted && tr.hits >= confirmFrames && tr.inRoi){
         tr.counted = true;
         speciesCounts[tr.label] = (speciesCounts[tr.label] || 0) + 1;
         totalCount++;
         els.hudTotal.textContent = totalCount;
-        els.chipTotal.classList.remove('flash');
-        void els.chipTotal.offsetWidth;
+        els.chipTotal.classList.remove('flash'); void els.chipTotal.offsetWidth;
         els.chipTotal.classList.add('flash');
         updateStatsUI();
         if (soundOn) beep(880, 70);
@@ -637,446 +570,386 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
   }
 
   /* ==========================================================
-     10) TESPİT DÖNGÜSÜ
+     TESPİT DÖNGÜSÜ  (COCO veya YOLO)
      ========================================================== */
   async function detectLoop(){
     if (!running) return;
-
     const now = nowMs();
     const minScore = +els.score.value;
     const interval = 1000 / DETECT_HZ;
 
-    if (model && els.video.readyState >= 2 && now - lastDetect > interval){
+    if (now - lastDetect > interval && els.video.readyState >= 2){
       lastDetect = now;
       const t0 = nowMs();
-
       try {
-        const preds = await model.detect(els.video, 40, minScore);
-
-        const vw = els.video.videoWidth || 1;
-        const vh = els.video.videoHeight || 1;
-        const dets = [];
-
-        for (const p of preds){
-          if (!COUNTABLE.includes(p.class)) continue;
-
-          const [x, y, w, h] = p.bbox;
-          const bbox = [x/vw, y/vh, w/vw, h/vh];
-
-          dets.push({
-            label: p.class,
-            score: p.score,
-            bbox,
-            pxW: w,
-            dist: estimateDistance(w),
-            inRoi: inRoi(bbox),
-          });
+        let dets = [];
+        if (activeModelType === 'custom' && yoloModel){
+          dets = await detectWithYolo(minScore);
+        } else if (cocoModel){
+          dets = await detectWithCoco(minScore);
         }
-
         updateTracks(dets, now);
         lastDetections = dets;
         redraw();
-
         const dt = nowMs() - t0;
         fpsSmooth = fpsSmooth ? fpsSmooth*0.8 + (1000/dt)*0.2 : 1000/dt;
         els.hudFps.textContent = fpsSmooth.toFixed(1);
         els.statTracks.textContent = tracks.length;
-
-      } catch (err){
-        console.warn(err);
-      }
+      } catch (err){ console.warn(err); }
     }
     requestAnimationFrame(detectLoop);
   }
 
+  /* ---- COCO-SSD ---- */
+  async function detectWithCoco(minScore){
+    const preds = await cocoModel.detect(els.video, 40, minScore);
+    const vw = els.video.videoWidth || 1, vh = els.video.videoHeight || 1;
+    const out = [];
+    for (const p of preds){
+      if (!COUNTABLE_COCO.includes(p.class)) continue;
+      const [x, y, w, h] = p.bbox;
+      const bbox = [x/vw, y/vh, w/vw, h/vh];
+      out.push({
+        label: p.class, score: p.score, bbox, pxW: w,
+        dist: estimateDistance(w), inRoi: inRoi(bbox),
+      });
+    }
+    return out;
+  }
+
+  /* ---- YOLO (özel) ---- */
+  async function detectWithYolo(minScore){
+    // yolo-ts detect() canvas'a çizer; biz kendi çizimimizi yapacağız.
+    // Bu yüzden geçici bir canvas kullanıp sonuçları alıyoruz.
+    const tmp = document.createElement('canvas');
+    tmp.width = els.video.videoWidth || 640;
+    tmp.height = els.video.videoHeight || 480;
+
+    const raw = await new Promise(resolve => {
+      try {
+        // yolo-ts API: detect(source, model, canvas, callback)
+        window.yolo.detect(els.video, yoloModel, tmp, d => resolve(d || []));
+      } catch(e){ resolve([]); }
+    });
+
+    const vw = els.video.videoWidth || 1, vh = els.video.videoHeight || 1;
+    const out = [];
+    for (const p of raw){
+      const label = (p.label || p.class || '').toLowerCase();
+      if (!yoloLabels.includes(label)) continue;
+      const score = p.score ?? p.confidence ?? 0;
+      if (score < minScore) continue;
+
+      let [x, y, w, h] = p.bbox || p.box || [0,0,0,0];
+      // yolo-ts bazı sürümlerde [x,y,w,h] piksel, bazılarında normalize döner
+      if (w > 1 || h > 1){ x /= vw; y /= vh; w /= vw; h /= vh; }
+      const bbox = [x, y, w, h];
+      out.push({
+        label, score, bbox, pxW: w * vw,
+        dist: estimateDistance(w * vw), inRoi: inRoi(bbox),
+      });
+    }
+    return out;
+  }
+
   /* ==========================================================
-     11) ÇİZİM
+     ÇİZİM
      ========================================================== */
   function redraw(){
-    const W = els.stage.clientWidth;
-    const H = els.stage.clientHeight;
+    const W = els.stage.clientWidth, H = els.stage.clientHeight;
     if (!W || !H) return;
     ctx.clearRect(0, 0, W, H);
-
-    // 1) Izgara
     if (gridOn) drawGrid(W, H);
-
-    // 2) ROI
     drawRoi(W, H);
-
-    // 3) Tespitler
     drawDetections(W, H);
-
-    // 4) ROI çizim önizlemesi
     if (roiStart && roiCurrent) drawRoiPreview(W, H);
   }
 
   function drawGrid(W, H){
-    ctx.strokeStyle = 'rgba(34,211,238,.14)';
-    ctx.lineWidth = 1;
-    const cols = 3, rows = 3;
+    ctx.strokeStyle = 'rgba(34,211,238,.14)'; ctx.lineWidth = 1;
     ctx.beginPath();
-    for (let i = 1; i < cols; i++){
-      ctx.moveTo(W*i/cols, 0); ctx.lineTo(W*i/cols, H);
-    }
-    for (let i = 1; i < rows; i++){
-      ctx.moveTo(0, H*i/rows); ctx.lineTo(W, H*i/rows);
-    }
+    for (let i=1;i<3;i++){ ctx.moveTo(W*i/3,0); ctx.lineTo(W*i/3,H); }
+    for (let i=1;i<3;i++){ ctx.moveTo(0,H*i/3); ctx.lineTo(W,H*i/3); }
     ctx.stroke();
-    // Merkez işaret
-    ctx.strokeStyle = 'rgba(34,211,238,.3)';
-    ctx.beginPath();
-    ctx.moveTo(W/2 - 8, H/2); ctx.lineTo(W/2 + 8, H/2);
-    ctx.moveTo(W/2, H/2 - 8); ctx.lineTo(W/2, H/2 + 8);
-    ctx.stroke();
+    ctx.strokeStyle = 'rgba(34,211,238,.3)'; ctx.beginPath();
+    ctx.moveTo(W/2-8,H/2); ctx.lineTo(W/2+8,H/2);
+    ctx.moveTo(W/2,H/2-8); ctx.lineTo(W/2,H/2+8); ctx.stroke();
   }
 
   function drawRoi(W, H){
     if (!roi) return;
-    const x = roi.x * W, y = roi.y * H, w = roi.w * W, h = roi.h * H;
-
-    // Dışını karart
+    const x = roi.x*W, y = roi.y*H, w = roi.w*W, h = roi.h*H;
     ctx.fillStyle = 'rgba(0,0,0,.4)';
-    ctx.fillRect(0, 0, W, y);
-    ctx.fillRect(0, y+h, W, H-y-h);
-    ctx.fillRect(0, y, x, h);
-    ctx.fillRect(x+w, y, W-x-w, h);
-
-    // Kenar
-    ctx.strokeStyle = '#22d3ee';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 6]);
-    ctx.strokeRect(x, y, w, h);
-    ctx.setLineDash([]);
-
-    // Etiket
-    ctx.fillStyle = '#22d3ee';
-    ctx.font = '600 11px system-ui,sans-serif';
-    ctx.textBaseline = 'top';
-    ctx.fillText('SAYIM BÖLGESİ', x + 6, y + 6);
+    ctx.fillRect(0,0,W,y); ctx.fillRect(0,y+h,W,H-y-h);
+    ctx.fillRect(0,y,x,h); ctx.fillRect(x+w,y,W-x-w,h);
+    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2; ctx.setLineDash([8,6]);
+    ctx.strokeRect(x,y,w,h); ctx.setLineDash([]);
+    ctx.fillStyle = '#22d3ee'; ctx.font = '600 11px system-ui,sans-serif';
+    ctx.textBaseline = 'top'; ctx.fillText('SAYIM BÖLGESİ', x+6, y+6);
   }
 
   function drawRoiPreview(W, H){
-    const x1 = Math.min(roiStart.x, roiCurrent.x) * W;
-    const y1 = Math.min(roiStart.y, roiCurrent.y) * H;
-    const x2 = Math.max(roiStart.x, roiCurrent.x) * W;
-    const y2 = Math.max(roiStart.y, roiCurrent.y) * H;
-    ctx.fillStyle = 'rgba(34,211,238,.15)';
-    ctx.fillRect(x1, y1, x2-x1, y2-y1);
-    ctx.strokeStyle = '#22d3ee';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 4]);
-    ctx.strokeRect(x1, y1, x2-x1, y2-y1);
-    ctx.setLineDash([]);
+    const x1 = Math.min(roiStart.x, roiCurrent.x)*W, y1 = Math.min(roiStart.y, roiCurrent.y)*H;
+    const x2 = Math.max(roiStart.x, roiCurrent.x)*W, y2 = Math.max(roiStart.y, roiCurrent.y)*H;
+    ctx.fillStyle = 'rgba(34,211,238,.15)'; ctx.fillRect(x1,y1,x2-x1,y2-y1);
+    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2; ctx.setLineDash([6,4]);
+    ctx.strokeRect(x1,y1,x2-x1,y2-y1); ctx.setLineDash([]);
   }
 
-  function roundRect(x, y, w, h, r){
+  function roundRect(x,y,w,h,r){
     ctx.beginPath();
-    ctx.moveTo(x+r, y);
-    ctx.arcTo(x+w, y,   x+w, y+h, r);
-    ctx.arcTo(x+w, y+h, x,   y+h, r);
-    ctx.arcTo(x,   y+h, x,   y,   r);
-    ctx.arcTo(x,   y,   x+w, y,   r);
-    ctx.closePath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
   }
 
   function drawDetections(W, H){
     let visible = 0;
-
     for (const d of lastDetections){
-      const [nx, ny, nw, nh] = d.bbox;
+      const [nx,ny,nw,nh] = d.bbox;
       const x = nx*W, y = ny*H, w = nw*W, h = nh*H;
       if (w < 6 || h < 6) continue;
-
       visible++;
-
       const info = SPECIES_INFO[d.label] || { name: d.label, color: '#22d3ee', emoji: '❓' };
-      const baseColor = info.color;
-      const inside = d.inRoi;
-      const color = inside ? baseColor : 'rgba(120,140,160,.55)';
+      const color = d.inRoi ? info.color : 'rgba(120,140,160,.55)';
 
-      // Kutu
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = color;
-      roundRect(x, y, w, h, 6);
-      ctx.stroke();
+      ctx.lineWidth = 2; ctx.strokeStyle = color;
+      roundRect(x,y,w,h,6); ctx.stroke();
 
-      // Köşe vurguları
       const c = Math.min(14, w*0.25, h*0.25);
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(x, y+c);       ctx.lineTo(x, y);       ctx.lineTo(x+c, y);
-      ctx.moveTo(x+w-c, y);     ctx.lineTo(x+w, y);     ctx.lineTo(x+w, y+c);
-      ctx.moveTo(x+w, y+h-c);   ctx.lineTo(x+w, y+h);   ctx.lineTo(x+w-c, y+h);
-      ctx.moveTo(x+c, y+h);     ctx.lineTo(x, y+h);     ctx.lineTo(x, y+h-c);
-      ctx.stroke();
+      ctx.lineWidth = 3; ctx.beginPath();
+      ctx.moveTo(x,y+c); ctx.lineTo(x,y); ctx.lineTo(x+c,y);
+      ctx.moveTo(x+w-c,y); ctx.lineTo(x+w,y); ctx.lineTo(x+w,y+c);
+      ctx.moveTo(x+w,y+h-c); ctx.lineTo(x+w,y+h); ctx.lineTo(x+w-c,y+h);
+      ctx.moveTo(x+c,y+h); ctx.lineTo(x,y+h); ctx.lineTo(x,y+h-c); ctx.stroke();
 
-      // Confidence bar
-      const barH = 2;
-      ctx.fillStyle = 'rgba(0,0,0,.4)';
-      ctx.fillRect(x, y + h + 2, w, barH);
-      ctx.fillStyle = color;
-      ctx.fillRect(x, y + h + 2, w * d.score, barH);
+      ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fillRect(x, y+h+2, w, 2);
+      ctx.fillStyle = color; ctx.fillRect(x, y+h+2, w*d.score, 2);
 
-      // Etiket
       const distTxt = d.dist ? `  •  ≈ ${d.dist.toFixed(1)} m` : '';
       const text = `${info.emoji} ${info.name} %${(d.score*100).toFixed(0)}${distTxt}`;
-
       ctx.font = '600 12px system-ui,sans-serif';
-      const tw = ctx.measureText(text).width;
-      const padX = 7, th = 20;
-      const tx = x, ty = Math.max(0, y - th - 4);
-
-      ctx.fillStyle = 'rgba(10,14,19,.85)';
-      roundRect(tx, ty, tw + padX*2, th, 6);
-      ctx.fill();
-
-      ctx.fillStyle = color;
-      ctx.textBaseline = 'middle';
-      ctx.fillText(text, tx + padX, ty + th/2 + 1);
+      const tw = ctx.measureText(text).width, padX = 7, th = 20;
+      const tx = x, ty = Math.max(0, y-th-4);
+      ctx.fillStyle = 'rgba(10,14,19,.85)'; roundRect(tx,ty,tw+padX*2,th,6); ctx.fill();
+      ctx.fillStyle = color; ctx.textBaseline = 'middle';
+      ctx.fillText(text, tx+padX, ty+th/2+1);
     }
-
     els.hudVisible.textContent = visible;
   }
 
   /* ==========================================================
-     12) İSTATİSTİK UI
+     İSTATİSTİK
      ========================================================== */
   function updateStatsUI(){
     els.statTotal.textContent = totalCount;
     els.hudTotal.textContent = totalCount;
-
     const entries = Object.entries(speciesCounts).filter(([_,v]) => v > 0);
-    if (entries.length === 0){
+    if (!entries.length){
       els.statsList.innerHTML = '<div class="stat-row empty">Henüz hayvan sayılmadı</div>';
       return;
     }
-    els.statsList.innerHTML = entries
-      .sort((a,b) => b[1] - a[1])
-      .map(([k,v]) => {
-        const info = SPECIES_INFO[k] || { name: k, emoji: '❓', color: '#22d3ee' };
-        return `<div class="stat-row" style="border-left-color:${info.color}">
-          <span>${info.emoji} ${info.name}</span><b>${v}</b>
-        </div>`;
-      }).join('');
+    els.statsList.innerHTML = entries.sort((a,b)=>b[1]-a[1]).map(([k,v])=>{
+      const info = SPECIES_INFO[k] || { name:k, emoji:'❓', color:'#22d3ee' };
+      return `<div class="stat-row" style="border-left-color:${info.color}">
+        <span>${info.emoji} ${info.name}</span><b>${v}</b></div>`;
+    }).join('');
   }
 
   /* ==========================================================
-     13) SES
+     SES
      ========================================================== */
   let audioCtx = null;
-  function beep(freq = 880, dur = 70){
+  function beep(freq=880, dur=70){
     try {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.frequency.value = freq;
-      osc.type = 'sine';
+      const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+      osc.frequency.value = freq; osc.type = 'sine';
       gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur/1000);
       osc.connect(gain).connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + dur/1000);
+      osc.start(); osc.stop(audioCtx.currentTime + dur/1000);
     } catch(_){}
   }
 
   /* ==========================================================
-     14) DIŞA AKTARMA
+     DIŞA AKTARMA
      ========================================================== */
   function downloadBlob(blob, filename){
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
+    const a = document.createElement('a'); a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-
   function exportCsv(){
-    const rows = [['Tür', 'Adet', 'Zaman']];
-    const now = new Date().toISOString();
+    const rows = [['Tür','Adet','Zaman']], now = new Date().toISOString();
     let total = 0;
     for (const [k,v] of Object.entries(speciesCounts)){
-      if (v > 0){
-        const info = SPECIES_INFO[k] || { name: k };
-        rows.push([info.name, v, now]);
-        total += v;
-      }
+      if (v > 0){ rows.push([(SPECIES_INFO[k]||{name:k}).name, v, now]); total += v; }
     }
     rows.push(['TOPLAM', total, now]);
-    const csv = '\uFEFF' + rows.map(r => r.join(',')).join('\n');
-    downloadBlob(new Blob([csv], { type:'text/csv;charset=utf-8' }),
-                 `sayim-${Date.now()}.csv`);
+    downloadBlob(new Blob(['\uFEFF' + rows.map(r=>r.join(',')).join('\n')],
+      { type:'text/csv;charset=utf-8' }), `sayim-${Date.now()}.csv`);
     toast('CSV indirildi');
   }
-
   function takeSnapshot(){
     if (els.video.readyState < 2) return;
-    const canvas = document.createElement('canvas');
-    canvas.width  = els.overlay.width;
-    canvas.height = els.overlay.height;
-    const c = canvas.getContext('2d');
-
-    // Arka planı karart, sadece overlay kutuları üstte kalsın
-    c.fillStyle = '#0a0e13';
-    c.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Video
-    try { c.drawImage(els.video, 0, 0, canvas.width, canvas.height); } catch(_){}
-
-    // Overlay (tespitler + ROI + ızgara)
-    c.drawImage(els.overlay, 0, 0);
-
-    canvas.toBlob(b => {
-      if (b) downloadBlob(b, `kamera-${Date.now()}.png`);
-      toast('Fotoğraf kaydedildi');
-    }, 'image/png');
+    const c = document.createElement('canvas');
+    c.width = els.overlay.width; c.height = els.overlay.height;
+    const cx = c.getContext('2d');
+    cx.fillStyle = '#0a0e13'; cx.fillRect(0,0,c.width,c.height);
+    try { cx.drawImage(els.video, 0,0,c.width,c.height); } catch(_){}
+    cx.drawImage(els.overlay, 0,0);
+    c.toBlob(b => { if (b) downloadBlob(b, `kamera-${Date.now()}.png`); toast('Fotoğraf kaydedildi'); }, 'image/png');
   }
 
   /* ==========================================================
-     15) AYAR KALICILIĞI
+     AYAR KALICILIĞI
      ========================================================== */
-  const STORAGE_KEY = 'kamera-koyun-v2';
-
+  const STORAGE_KEY = 'kamera-koyun-v3';
   function saveSettings(){
     const s = {
-      score: els.score.value,
-      fov: els.fov.value,
-      width: els.width.value,
-      confirm: els.confirm.value,
-      model: els.modelSel.value,
-      zoom,
-      grid: gridOn,
-      night: nightOn,
-      sound: soundOn,
-      roi,
+      modelType: els.modelType.value,
+      customModelUrl: els.customModelUrl.value,
+      customLabels: els.customLabels.value,
+      score: els.score.value, fov: els.fov.value, width: els.width.value,
+      confirm: els.confirm.value, zoom, grid: gridOn, night: nightOn, sound: soundOn, roi,
     };
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch(_){}
   }
-
   function loadSettings(){
     try {
       const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      if (s.score)   els.score.value = s.score;
-      if (s.fov)     els.fov.value = s.fov;
-      if (s.width)   els.width.value = s.width;
+      if (s.modelType) els.modelType.value = s.modelType;
+      if (s.customModelUrl) els.customModelUrl.value = s.customModelUrl;
+      if (s.customLabels) els.customLabels.value = s.customLabels;
+      if (s.score) els.score.value = s.score;
+      if (s.fov) els.fov.value = s.fov;
+      if (s.width) els.width.value = s.width;
       if (s.confirm) els.confirm.value = s.confirm;
-      if (s.model)   els.modelSel.value = s.model;
-      if (s.roi)     roi = s.roi;
-      gridOn  = !!s.grid;
-      nightOn = !!s.night;
-      soundOn = s.sound !== false;
+      if (s.roi) roi = s.roi;
+      gridOn = !!s.grid; nightOn = !!s.night; soundOn = s.sound !== false;
     } catch(_){}
     syncUiFromState();
   }
-
   function syncUiFromState(){
-    els.scoreOut.textContent   = (+els.score.value).toFixed(2);
-    els.fovOut.textContent     = (+els.fov.value).toFixed(0) + '°';
-    els.widthOut.textContent   = (+els.width.value).toFixed(2) + ' m';
+    els.scoreOut.textContent = (+els.score.value).toFixed(2);
+    els.fovOut.textContent = (+els.fov.value).toFixed(0) + '°';
+    els.widthOut.textContent = (+els.width.value).toFixed(2) + ' m';
     els.confirmOut.textContent = els.confirm.value;
     confirmFrames = +els.confirm.value;
-
     els.swSound.classList.toggle('on', soundOn);
     els.btnGrid.classList.toggle('on', gridOn);
     els.btnNight.classList.toggle('on', nightOn);
     els.btnRoi.classList.toggle('on', !!roi);
     els.video.classList.toggle('night', nightOn);
+    els.customModelFields.classList.toggle('hidden', els.modelType.value !== 'custom');
+    activeModelType = els.modelType.value;
   }
 
   /* ==========================================================
-     16) UI OLAYLARI
+     MODEL YÜKLEME
      ========================================================== */
-  // Tabs
+  async function loadCoco(){
+    if (cocoModel) return cocoModel;
+    setStatus('<span class="spinner"></span>COCO-SSD yükleniyor…');
+    cocoModel = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+    return cocoModel;
+  }
+
+  async function loadCustomModel(){
+    const url = els.customModelUrl.value.trim();
+    if (!url){ toast('Model URL girin'); return false; }
+    const labels = els.customLabels.value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+    if (!labels.length){ toast('Etiketleri girin (örn: goat,sheep)'); return false; }
+
+    setStatus('<span class="spinner"></span>Özel model yükleniyor…');
+    try {
+      window.yolo.setup({
+        modelUrl: url,
+        labels,
+        scoreThreshold: +els.score.value,
+        boxLabels: false,     // biz çizeceğiz
+        boxLineWidth: 0,
+      });
+      yoloModel = await window.yolo.loadModel();
+      yoloLabels = labels;
+      activeModelType = 'custom';
+      setStatus('Özel model hazır', 'ok');
+      toast('Özel model yüklendi ✓');
+      return true;
+    } catch(err){
+      console.warn(err);
+      yoloModel = null;
+      setStatus('Model yüklenemedi — COCO’ya dönüldü', 'err');
+      toast('Model yüklenemedi, COCO-SSD kullanılacak');
+      return false;
+    }
+  }
+
+  /* ==========================================================
+     UI OLAYLARI
+     ========================================================== */
   document.querySelectorAll('.tab').forEach(t => {
     t.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active'));
       t.classList.add('active');
-      document.querySelector(`.tab-content[data-content="${t.dataset.tab}"]`)
-        .classList.add('active');
+      document.querySelector(`.tab-content[data-content="${t.dataset.tab}"]`).classList.add('active');
     });
   });
 
-  // Sliderlar
-  els.score.addEventListener('input', e => {
-    els.scoreOut.textContent = (+e.target.value).toFixed(2); saveSettings();
-  });
-  els.confirm.addEventListener('input', e => {
-    els.confirmOut.textContent = e.target.value;
-    confirmFrames = +e.target.value;
+  els.modelType.addEventListener('change', () => {
+    const custom = els.modelType.value === 'custom';
+    els.customModelFields.classList.toggle('hidden', !custom);
+    activeModelType = els.modelType.value;
     saveSettings();
   });
-  els.fov.addEventListener('input', e => {
-    els.fovOut.textContent = (+e.target.value).toFixed(0) + '°'; saveSettings();
+
+  els.btnTestModel.addEventListener('click', async () => {
+    els.btnTestModel.disabled = true;
+    const ok = await loadCustomModel();
+    els.btnTestModel.disabled = false;
+    if (ok) activeModelType = 'custom';
   });
-  els.width.addEventListener('input', e => {
-    els.widthOut.textContent = (+e.target.value).toFixed(2) + ' m'; saveSettings();
-  });
+
+  els.score.addEventListener('input', e => { els.scoreOut.textContent = (+e.target.value).toFixed(2); saveSettings(); });
+  els.confirm.addEventListener('input', e => { els.confirmOut.textContent = e.target.value; confirmFrames = +e.target.value; saveSettings(); });
+  els.fov.addEventListener('input', e => { els.fovOut.textContent = (+e.target.value).toFixed(0) + '°'; saveSettings(); });
+  els.width.addEventListener('input', e => { els.widthOut.textContent = (+e.target.value).toFixed(2) + ' m'; saveSettings(); });
   els.zoom.addEventListener('input', e => setZoom(+e.target.value));
-  els.modelSel.addEventListener('change', () => {
-    toast('Model değişikliği için yeniden başlatın', 2200);
-    saveSettings();
-  });
+  els.swSound.addEventListener('click', () => { soundOn = !soundOn; els.swSound.classList.toggle('on', soundOn); saveSettings(); });
 
-  // Toggle
-  els.swSound.addEventListener('click', () => {
-    soundOn = !soundOn;
-    els.swSound.classList.toggle('on', soundOn);
-    saveSettings();
-  });
-
-  // Quickbar
   els.btnTorch.addEventListener('click', toggleTorch);
-  els.btnGrid.addEventListener('click', () => {
-    gridOn = !gridOn;
-    els.btnGrid.classList.toggle('on', gridOn);
-    redraw(); saveSettings();
-  });
+  els.btnGrid.addEventListener('click', () => { gridOn = !gridOn; els.btnGrid.classList.toggle('on', gridOn); redraw(); saveSettings(); });
   els.btnNight.addEventListener('click', () => {
-    nightOn = !nightOn;
-    els.btnNight.classList.toggle('on', nightOn);
-    els.video.classList.toggle('night', nightOn);
-    saveSettings();
+    nightOn = !nightOn; els.btnNight.classList.toggle('on', nightOn);
+    els.video.classList.toggle('night', nightOn); saveSettings();
   });
   els.btnRoi.addEventListener('click', () => {
-    if (roi){
-      // Uzun basış olmadan tek tıkla temizle
-      roi = null;
-      els.btnRoi.classList.remove('on');
-      redraw(); saveSettings();
-      toast('Bölge temizlendi');
-    } else {
-      setRoiMode('drawing');
-    }
+    if (roi){ roi = null; els.btnRoi.classList.remove('on'); redraw(); saveSettings(); toast('Bölge temizlendi'); }
+    else setRoiMode('drawing');
   });
   els.btnShot.addEventListener('click', takeSnapshot);
 
-  // Alt butonlar
   els.btnReset.addEventListener('click', () => {
     if (!confirm('Tüm sayaçlar sıfırlanacak. Onaylıyor musunuz?')) return;
     tracks = []; nextTrackId = 1; totalCount = 0; speciesCounts = {};
-    lastDetections = [];
-    sessionStart = nowMs();
-    updateStatsUI(); redraw();
-    toast('Sayacı sıfırlandı');
+    lastDetections = []; sessionStart = nowMs();
+    updateStatsUI(); redraw(); toast('Sayacı sıfırlandı');
   });
   els.btnCsv.addEventListener('click', exportCsv);
   els.btnResetZoom.addEventListener('click', () => setZoom(1));
 
-  // Double-tap to reset zoom
   let lastTap = 0;
-  els.viewport.addEventListener('touchend', e => {
+  els.viewport.addEventListener('touchend', () => {
     if (roiMode === 'drawing') return;
     const t = nowMs();
-    if (t - lastTap < 300){
-      setZoom(1);
-      toast('Zoom sıfırlandı', 800);
-    }
+    if (t - lastTap < 300){ setZoom(1); toast('Zoom sıfırlandı', 800); }
     lastTap = t;
   });
 
   /* ==========================================================
-     17) BAŞLAT / DURDUR
+     BAŞLAT
      ========================================================== */
   function setStatus(text, cls = ''){
     els.chipStatus.textContent = text;
@@ -1088,59 +961,46 @@ button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:
     els.splashErr.textContent = '';
     setStatus('<span class="spinner"></span>Kamera açılıyor…');
 
-    try {
-      await startCamera();
-    } catch (err){
+    try { await startCamera(); }
+    catch (err){
       els.splashErr.textContent = 'Kamera açılamadı: ' + err.message;
-      els.btnStart.disabled = false;
-      setStatus('Kamera hatası', 'err');
-      return;
+      els.btnStart.disabled = false; setStatus('Kamera hatası', 'err'); return;
     }
 
-    if (!model){
-      setStatus('<span class="spinner"></span>Model yükleniyor…');
+    // Model seçimine göre yükle
+    let modelReady = false;
+    if (els.modelType.value === 'custom' && els.customModelUrl.value.trim()){
+      modelReady = await loadCustomModel();
+    }
+    if (!modelReady){
       try {
-        model = await cocoSsd.load({ base: els.modelSel.value });
+        await loadCoco();
+        activeModelType = 'coco';
+        modelReady = true;
       } catch (err){
         els.splashErr.textContent = 'Model yüklenemedi: ' + err.message;
-        els.btnStart.disabled = false;
-        setStatus('Model hatası', 'err');
-        return;
+        els.btnStart.disabled = false; setStatus('Model hatası', 'err'); return;
       }
     }
 
     els.splash.style.opacity = '0';
     setTimeout(() => els.splash.style.display = 'none', 300);
-    running = true;
-    sessionStart = nowMs();
-    setStatus('Tespit aktif', 'ok');
-
-    // Süre güncelle
-    setInterval(() => {
-      if (!running) return;
-      els.statTime.textContent = fmtTime(nowMs() - sessionStart);
-    }, 500);
-
+    running = true; sessionStart = nowMs();
+    setStatus(activeModelType === 'custom' ? 'Özel model aktif' : 'COCO-SSD aktif', 'ok');
+    setInterval(() => { if (running) els.statTime.textContent = fmtTime(nowMs() - sessionStart); }, 500);
     requestAnimationFrame(detectLoop);
   });
 
   /* ==========================================================
-     18) INIT
+     INIT
      ========================================================== */
   loadSettings();
   updateStatsUI();
   updateZoomLabel();
   layout();
-
-  // Kaydedilmiş ROI varsa uyar
   if (roi) toast('Önceki bölge geri yüklendi', 2000);
 
 })();
 </script>
 </body>
-</html>
-<script>
-console.log("Merhaba, konsol!");
-</script>
-</body>
-</html>
+</html> 
