@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{font-family:system-ui;padding:20px;background:#fff;color:#333}
+h1{color:#c8102e}
+button{padding:8px 16px;background:#c8102e;color:#fff;border:none;border-radius:6px;cursor:pointer}
+</style>
+</head>
+<body>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#000">
+<title>Pro Kamera — Ultra</title>
+<style>
+  :root{
+    --bg:#000; --fg:#f5f7fa; --mut:#8a96a3;
+    --acc:#ffd400; --rec:#ff3b30; --line:#1a1f26;
+    --r:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
+    font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    user-select:none;overscroll-behavior:none}
+
+  #app{position:fixed;inset:0;display:flex;flex-direction:column}
+
+  /* ===== VIEWFINDER ===== */
+  #viewfinder{flex:1;position:relative;overflow:hidden;background:#000;
+    display:flex;align-items:center;justify-content:center;touch-action:none}
+  #stage{position:relative;will-change:transform}
+  #video{display:block;width:100%;height:100%;object-fit:fill;
+    background:#000}
+  #overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+
+  /* ===== GRID ===== */
+  #grid{position:absolute;inset:0;pointer-events:none;display:none}
+  #grid.on{display:block}
+  #grid::before,#grid::after,
+  #grid .v1,#grid .v2,#grid .h1,#grid .h2{content:"";position:absolute;background:rgba(255,255,255,.18)}
+  #grid::before{left:33.33%;top:0;bottom:0;width:1px}
+  #grid::after{left:66.66%;top:0;bottom:0;width:1px}
+  #grid .h1{top:33.33%;left:0;right:0;height:1px}
+  #grid .h2{top:66.66%;left:0;right:0;height:1px}
+
+  /* ===== LEVEL ===== */
+  #level{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:56px;height:56px;pointer-events:none;opacity:0;transition:opacity .2s}
+  #level.on{opacity:1}
+  #level::before,#level::after{content:"";position:absolute;background:var(--acc)}
+  #level::before{left:50%;top:0;bottom:0;width:1.5px;transform:translateX(-50%)}
+  #level::after{top:50%;left:0;right:0;height:1.5px;transform:translateY(-50%)}
+  #level .center{position:absolute;inset:20px;border:1.5px solid var(--acc);border-radius:50%}
+
+  /* ===== FOCUS RING ===== */
+  #focusRing{position:absolute;width:76px;height:76px;margin:-38px 0 0 -38px;
+    border:1.5px solid var(--acc);border-radius:4px;pointer-events:none;opacity:0;
+    transition:opacity .25s,transform .25s}
+  #focusRing.show{opacity:1;transform:scale(1)}
+  #focusRing.locked{transform:scale(.85);border-color:var(--rec)}
+
+  /* ===== HISTOGRAM ===== */
+  #histogram{position:absolute;top:70px;right:10px;width:110px;height:70px;
+    background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.1);
+    border-radius:8px;pointer-events:none;display:none;backdrop-filter:blur(6px)}
+  #histogram.on{display:block}
+  #histogram canvas{width:100%;height:100%}
+
+  /* ===== TOP BAR ===== */
+  #topbar{position:absolute;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top) + 10px) 12px 10px;
+    display:flex;align-items:center;justify-content:space-between;z-index:5;
+    background:linear-gradient(to bottom,rgba(0,0,0,.75),transparent)}
+  .topbtn{width:40px;height:40px;border-radius:50%;border:none;background:rgba(0,0,0,.4);
+    color:var(--fg);font-size:18px;cursor:pointer;display:flex;align-items:center;
+    justify-content:center;backdrop-filter:blur(8px);transition:transform .15s}
+  .topbtn:active{transform:scale(.9)}
+  .topbtn.on{background:var(--acc);color:#000}
+  .topbtn:disabled{opacity:.35}
+  #cameraInfo{font-size:12px;font-weight:600;letter-spacing:.3px;
+    background:rgba(0,0,0,.5);padding:7px 14px;border-radius:999px;
+    backdrop-filter:blur(8px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    max-width:calc(100% - 200px)}
+
+  /* ===== ZOOM BAR ===== */
+  #zoomBar{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 180px);
+    left:50%;transform:translateX(-50%);display:flex;gap:6px;
+    background:rgba(0,0,0,.55);padding:5px;border-radius:999px;
+    backdrop-filter:blur(12px);z-index:5}
+  #zoomBar.hidden{display:none}
+  .zbtn{min-width:46px;height:36px;padding:0 12px;border-radius:999px;border:none;
+    background:transparent;color:var(--fg);font-size:12px;font-weight:700;
+    cursor:pointer;transition:all .15s;font-variant-numeric:tabular-nums}
+  .zbtn.active{background:var(--acc);color:#000}
+  .zbtn:active{transform:scale(.92)}
+
+  /* ===== MODES ===== */
+  #modes{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 130px);
+    left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:5}
+  .mbtn{padding:8px 14px;border:none;background:transparent;color:var(--mut);
+    font-size:12px;font-weight:700;letter-spacing:.5px;cursor:pointer;
+    position:relative;text-transform:uppercase}
+  .mbtn.active{color:var(--acc)}
+  .mbtn.active::after{content:"";position:absolute;left:50%;bottom:-2px;
+    transform:translateX(-50%);width:16px;height:2px;background:var(--acc);
+    border-radius:2px}
+
+  /* ===== BOTTOM BAR ===== */
+  #bottombar{position:absolute;bottom:0;left:0;right:0;
+    padding:0 24px calc(env(safe-area-inset-bottom) + 20px);
+    display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20px;z-index:5;
+    background:linear-gradient(to top,rgba(0,0,0,.85),transparent)}
+  .sidebtn{width:52px;height:52px;border-radius:50%;border:1.5px solid rgba(255,255,255,.15);
+    background:rgba(0,0,0,.5);color:var(--fg);font-size:20px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    backdrop-filter:blur(8px);transition:transform .1s,background .2s}
+  .sidebtn:active{transform:scale(.9)}
+  .sidebtn:disabled{opacity:.35}
+  .sidebtn.on{background:var(--acc);color:#000;border-color:var(--acc)}
+  #galleryBtn{justify-self:start}
+  #switchBtn{justify-self:end}
+
+  #shutterBtn{width:76px;height:76px;border-radius:50%;
+    border:4px solid rgba(255,255,255,.9);background:rgba(255,255,255,.15);
+    cursor:pointer;position:relative;transition:transform .1s}
+  #shutterBtn::after{content:"";position:absolute;inset:6px;border-radius:50%;
+    background:#fff;transition:all .15s}
+  #shutterBtn:active{transform:scale(.92)}
+  #shutterBtn:active::after{inset:10px}
+  #shutterBtn.video::after{background:var(--rec);inset:16px;border-radius:6px}
+  #shutterBtn.recording::after{background:var(--rec);inset:24px;border-radius:4px}
+  #shutterBtn.recording{border-color:var(--rec);
+    animation:pulseRec 1s ease-in-out infinite}
+  @keyframes pulseRec{0%,100%{box-shadow:0 0 0 0 rgba(255,59,48,.5)}
+    50%{box-shadow:0 0 0 14px rgba(255,59,48,0)}}
+
+  /* ===== REC INDICATOR ===== */
+  #recIndicator{position:absolute;top:calc(env(safe-area-inset-top) + 60px);
+    left:50%;transform:translateX(-50%);display:none;align-items:center;gap:8px;
+    background:rgba(0,0,0,.6);padding:6px 14px;border-radius:999px;
+    font-size:12px;font-weight:700;backdrop-filter:blur(8px);z-index:6}
+  #recIndicator.on{display:flex}
+  #recIndicator .dot{width:8px;height:8px;border-radius:50%;background:var(--rec);
+    animation:blink 1s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* ===== SETTINGS SHEET ===== */
+  #sheetBack{position:fixed;inset:0;background:rgba(0,0,0,.6);
+    z-index:99;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(4px)}
+  #sheetBack.show{opacity:1;pointer-events:auto}
+  #sheet{position:fixed;bottom:0;left:0;right:0;z-index:100;
+    background:#0e1218;border-top:1px solid var(--line);
+    border-radius:20px 20px 0 0;transform:translateY(100%);
+    transition:transform .3s cubic-bezier(.2,.8,.2,1);
+    max-height:80vh;overflow-y:auto;padding-bottom:calc(env(safe-area-inset-bottom) + 16px)}
+  #sheet.show{transform:translateY(0)}
+  #sheet::-webkit-scrollbar{width:4px}
+  #sheet::-webkit-scrollbar-thumb{background:#2a3746;border-radius:2px}
+  .sheet-handle{width:36px;height:4px;background:#3a4553;border-radius:2px;
+    margin:10px auto 16px}
+  .sheet-title{font-size:15px;font-weight:700;padding:0 20px 12px;
+    display:flex;justify-content:space-between;align-items:center}
+  .sheet-title button{background:none;border:none;color:var(--acc);
+    font-size:13px;font-weight:600;cursor:pointer}
+  .sect{padding:0 20px 16px}
+  .sect-title{font-size:11px;color:var(--mut);text-transform:uppercase;
+    letter-spacing:.8px;margin:14px 0 8px;font-weight:700}
+  .srow{display:flex;align-items:center;gap:12px;padding:9px 0}
+  .srow label{flex:0 0 96px;font-size:12.5px;color:var(--fg)}
+  .srow .val{flex:0 0 60px;text-align:right;font-size:12px;color:var(--acc);
+    font-variant-numeric:tabular-nums;font-weight:600}
+  .srow input[type=range]{flex:1;accent-color:var(--acc);height:22px;background:transparent}
+  .srow select{flex:1;background:#181e27;color:var(--fg);
+    border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
+  .srow .sw{position:relative;width:42px;height:24px;background:#232b36;
+    border-radius:999px;cursor:pointer;transition:background .2s;flex-shrink:0}
+  .srow .sw::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;
+    background:#fff;border-radius:50%;transition:transform .2s}
+  .srow .sw.on{background:var(--acc)}
+  .srow .sw.on::after{transform:translateX(18px)}
+  .srow .sw.disabled{opacity:.35;pointer-events:none}
+
+  /* ===== SPLASH ===== */
+  #splash{position:absolute;inset:0;z-index:200;background:#000;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:18px;padding:32px;text-align:center;transition:opacity .4s}
+  #splash .icon{font-size:64px;line-height:1}
+  #splash h1{font-size:22px;font-weight:800;letter-spacing:-.3px}
+  #splash p{color:var(--mut);font-size:13px;max-width:340px;line-height:1.65}
+  #splash button{background:var(--acc);color:#000;border:none;
+    padding:15px 40px;border-radius:999px;font-size:15px;font-weight:800;
+    cursor:pointer;transition:transform .1s}
+  #splash button:active{transform:scale(.95)}
+  #splashErr{color:var(--rec);font-size:12px;min-height:16px;max-width:340px}
+
+  /* ===== TOAST ===== */
+  #toast{position:fixed;left:50%;bottom:170px;transform:translateX(-50%) translateY(20px);
+    background:rgba(30,41,59,.95);color:var(--fg);padding:10px 18px;border-radius:999px;
+    font-size:13px;font-weight:600;opacity:0;pointer-events:none;
+    transition:all .3s;backdrop-filter:blur(10px);z-index:300;
+    border:1px solid rgba(255,255,255,.08);white-space:nowrap;max-width:90%}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* ===== CAPTURED FLASH ===== */
+  #flash{position:absolute;inset:0;background:#fff;opacity:0;
+    pointer-events:none;z-index:10;transition:opacity .1s}
+  #flash.on{opacity:.8}
+
+  /* ===== HIDDEN ===== */
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============= VIEWFINDER ============= -->
+  <div id="viewfinder">
+    <div id="stage">
+      <video id="video" playsinline muted autoplay></video>
+      <canvas id="overlay"></canvas>
+    </div>
+
+    <div id="grid"><span class="v1"></span><span class="v2"></span>
+      <span class="h1"></span><span class="h2"></span></div>
+    <div id="level"><span class="center"></span></div>
+    <div id="focusRing"></div>
+    <div id="histogram"><canvas id="histCanvas" width="220" height="140"></canvas></div>
+    <div id="flash"></div>
+
+    <!-- TOP -->
+    <div id="topbar">
+      <button class="topbtn" id="settingsBtn" title="Ayarlar">⚙</button>
+      <div id="cameraInfo">Kamera yükleniyor…</div>
+      <button class="topbtn" id="flashBtn" title="Flaş" disabled>⚡</button>
+    </div>
+
+    <!-- REC -->
+    <div id="recIndicator">
+      <span class="dot"></span>
+      <span id="recTime">00:00</span>
+    </div>
+
+    <!-- ZOOM -->
+    <div id="zoomBar" class="hidden"></div>
+
+    <!-- MODES -->
+    <div id="modes">
+      <button class="mbtn active" data-mode="photo">Foto</button>
+      <button class="mbtn" data-mode="video">Video</button>
+      <button class="mbtn" data-mode="pro">Pro</button>
+    </div>
+
+    <!-- BOTTOM -->
+    <div id="bottombar">
+      <button class="sidebtn" id="galleryBtn" title="Son çekim">🖼️</button>
+      <button id="shutterBtn" title="Çek"></button>
+      <button class="sidebtn" id="switchBtn" title="Kamera değiştir">🔄</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============= SETTINGS SHEET ============= -->
+<div id="sheetBack"></div>
+<div id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">
+    <span>Kamera Ayarları</span>
+    <button id="sheetClose">Kapat</button>
+  </div>
+
+  <div class="sect">
+    <div class="sect-title">Kamera</div>
+    <div class="srow">
+      <label>Fiziksel</label>
+      <select id="cameraSelect"></select>
+    </div>
+    <div class="srow">
+      <label>Çözünürlük</label>
+      <select id="resSelect">
+        <option value="3840x2160">4K (3840×2160)</option>
+        <option value="2560x1440">QHD (2560×1440)</option>
+        <option value="1920x1080">Full HD (1920×1080)</option>
+        <option value="1280x720">HD (1280×720)</option>
+      </select>
+    </div>
+    <div class="srow">
+      <label>FPS</label>
+      <select id="fpsSelect">
+        <option value="30">30 fps</option>
+        <option value="60">60 fps (varsa)</option>
+        <option value="24">24 fps (sinema)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="sect">
+    <div class="sect-title">Pozlama</div>
+    <div class="srow">
+      <label>EV (+/-)</label>
+      <input type="range" id="evSlider" min="-2" max="2" step="0.1" value="0">
+      <span class="val" id="evVal">0.0</span>
+    </div>
+    <div class="srow">
+      <label>ISO</label>
+      <input type="range" id="isoSlider" min="0" max="100" step="1" value="0">
+      <span class="val" id="isoVal">oto</span>
+    </div>
+    <div class="srow">
+      <label>Enstantane</label>
+      <input type="range" id="shutterSlider" min="0" max="100" step="1" value="0">
+      <span class="val" id="shutterVal">oto</span>
+    </div>
+  </div>
+
+  <div class="sect">
+    <div class="sect-title">Odak &amp; Renk</div>
+    <div class="srow">
+      <label>Odak</label>
+      <select id="focusSelect">
+        <option value="continuous">Sürekli</option>
+        <option value="single-shot">Tek sefer</option>
+        <option value="manual">Manuel</option>
+      </select>
+    </div>
+    <div class="srow">
+      <label>Manuel odak</label>
+      <input type="range" id="focusSlider" min="0" max="100" step="1" value="50">
+      <span class="val" id="focusVal">—</span>
+    </div>
+    <div class="srow">
+      <label>Beyaz dengesi</label>
+      <select id="wbSelect">
+        <option value="continuous">Otomatik</option>
+        <option value="manual">Manuel</option>
+        <option value="incandescent">Tungsten</option>
+        <option value="fluorescent">Florasan</option>
+        <option value="daylight">Gün ışığı</option>
+        <option value="cloudy">Bulutlu</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="sect">
+    <div class="sect-title">Ekran</div>
+    <div class="srow">
+      <label>Izgara</label>
+      <div class="sw" id="swGrid"></div>
+    </div>
+    <div class="srow">
+      <label>Seviye</label>
+      <div class="sw on" id="swLevel"></div>
+    </div>
+    <div class="srow">
+      <label>Histogram</label>
+      <div class="sw" id="swHist"></div>
+    </div>
+  </div>
+
+  <div class="sect">
+    <div class="sect-title">Fotoğraf</div>
+    <div class="srow">
+      <label>Zamanlayıcı</label>
+      <select id="timerSelect">
+        <option value="0">Kapalı</option>
+        <option value="3">3 saniye</option>
+        <option value="5">5 saniye</option>
+        <option value="10">10 saniye</option>
+      </select>
+    </div>
+    <div class="srow">
+      <label>Biçim</label>
+      <select id="formatSelect">
+        <option value="image/jpeg">JPEG</option>
+        <option value="image/png">PNG (kayıpsız)</option>
+      </select>
+    </div>
+    <div class="srow">
+      <label>Kalite</label>
+      <input type="range" id="qualitySlider" min="70" max="100" step="1" value="95">
+      <span class="val" id="qualityVal">95</span>
+    </div>
+  </div>
+
+  <div class="sect">
+    <div class="sect-title">Video</div>
+    <div class="srow">
+      <label>Bit hızı</label>
+      <select id="bitrateSelect">
+        <option value="20000000">20 Mbps</option>
+        <option value="50000000">50 Mbps</option>
+        <option value="80000000">80 Mbps</option>
+        <option value="120000000">120 Mbps (yüksek)</option>
+      </select>
+    </div>
+    <div class="srow">
+      <label>Ses</label>
+      <div class="sw on" id="swAudio"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============= SPLASH ============= -->
+<div id="splash">
+  <div class="icon">📷</div>
+  <h1>Pro Kamera — Ultra</h1>
+  <p>Maksimum çözünürlük, 4 fiziksel arka kamera, tam çözünürlüklü fotoğraf, 120 Mbps video, manuel kontroller.</p>
+  <button id="btnStart">Kamerayı Başlat</button>
+  <p id="splashErr"></p>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* ==========================================================
+     SABİTLER
+     ========================================================== */
+  // Tipik arka kamera sıralaması (S23 Ultra / modern Android):
+  // 0=ultrawide, 1=wide(main), 2=tele 3x, 3=tele 10x
+  // Front kamera genellikle en sonda olur.
+  const ZOOM_PRESETS = [1, 3, 10];
+  const HIST_INTERVAL = 250;
+
+  /* ==========================================================
+     DURUM
+     ========================================================== */
+  let stream = null;
+  let videoTrack = null;
+  let imageCapture = null;
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let recStartTime = 0;
+  let recTimer = null;
+
+  let cams = [];
+  let currentCamId = null;
+  let facing = 'environment';
+  let currentMode = 'photo';       // photo | video | pro
+  let isRecording = false;
+  let settings = {
+    resW: 3840, resH: 2160, fps: 30,
+    ev: 0, iso: null, shutter: null,
+    focus: 'continuous', focusVal: 0,
+    wb: 'continuous',
+    grid: false, level: true, hist: false,
+    timer: 0, format: 'image/jpeg', quality: 95,
+    bitrate: 50000000, audio: true,
+  };
+
+  let capabilities = {};           // track.getCapabilities()
+  let lastPhotoBlob = null;
+  let torchOn = false;
+  let torchLevel = 1;
+
+  /* ==========================================================
+     DOM
+     ========================================================== */
+  const $ = id => document.getElementById(id);
+  const els = {
+    video: $('video'), stage: $('stage'),
+    overlay: $('overlay'),
+    splash: $('splash'), splashErr: $('splashErr'), btnStart: $('btnStart'),
+    cameraInfo: $('cameraInfo'), settingsBtn: $('settingsBtn'),
+    flashBtn: $('flashBtn'),
+    zoomBar: $('zoomBar'), modes: $('modes'),
+    shutter: $('shutterBtn'), switchBtn: $('switchBtn'),
+    gallery: $('galleryBtn'),
+    grid: $('grid'), level: $('level'), focusRing: $('focusRing'),
+    histogram: $('histogram'), histCanvas: $('histCanvas'),
+    flash: $('flash'),
+    recIndicator: $('recIndicator'), recTime: $('recTime'),
+    sheet: $('sheet'), sheetBack: $('sheetBack'), sheetClose: $('sheetClose'),
+    toast: $('toast'),
+    cameraSelect: $('cameraSelect'), resSelect: $('resSelect'),
+    fpsSelect: $('fpsSelect'),
+    evSlider: $('evSlider'), evVal: $('evVal'),
+    isoSlider: $('isoSlider'), isoVal: $('isoVal'),
+    shutterSlider: $('shutterSlider'), shutterVal: $('shutterVal'),
+    focusSelect: $('focusSelect'), focusSlider: $('focusSlider'), focusVal: $('focusVal'),
+    wbSelect: $('wbSelect'),
+    swGrid: $('swGrid'), swLevel: $('swLevel'), swHist: $('swHist'),
+    timerSelect: $('timerSelect'), formatSelect: $('formatSelect'),
+    qualitySlider: $('qualitySlider'), qualityVal: $('qualityVal'),
+    bitrateSelect: $('bitrateSelect'), swAudio: $('swAudio'),
+  };
+  const vctx = els.overlay.getContext('2d');
+  const hctx = els.histCanvas.getContext('2d');
+
+  /* ==========================================================
+     YARDIMCILAR
+     ========================================================== */
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  function toast(msg, ms=1800){
+    els.toast.textContent = msg;
+    els.toast.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => els.toast.classList.remove('show'), ms);
+  }
+  function downloadBlob(blob, filename){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+  function fmtTime(ms){
+    const s = Math.floor(ms/1000);
+    return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+  }
+  function todayStamp(){
+    const d = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+  }
+
+  /* ==========================================================
+     YERLEŞİM
+     ========================================================== */
+  function layout(){
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const ar = (els.video.videoWidth && els.video.videoHeight)
+      ? els.video.videoWidth / els.video.videoHeight : 16/9;
+    let w = vw, h = w / ar;
+    if (h > vh){ h = vh; w = h * ar; }
+    els.stage.style.width  = w + 'px';
+    els.stage.style.height = h + 'px';
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    els.overlay.width  = Math.round(w * dpr);
+    els.overlay.height = Math.round(h * dpr);
+    vctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', layout);
+  els.video.addEventListener('loadedmetadata', layout);
+
+  /* ==========================================================
+     KAMERA LİSTESİ
+     ========================================================== */
+  async function listCameras(){
+    const all = await navigator.mediaDevices.enumerateDevices();
+    return all.filter(d => d.kind === 'videoinput');
+  }
+
+  function populateCameraSelect(){
+    els.cameraSelect.innerHTML = '';
+    cams.forEach((d, i) => {
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      opt.textContent = d.label || `Kamera ${i+1}`;
+      if (d.deviceId === currentCamId) opt.selected = true;
+      els.cameraSelect.appendChild(opt);
+    });
+  }
+
+  /* ==========================================================
+     KAMERA BAŞLAT
+     ========================================================== */
+  async function startCamera(deviceId = null){
+    if (stream) stopStream();
+
+    const want = {
+      width:  { ideal: settings.resW },
+      height: { ideal: settings.resH },
+      frameRate: { ideal: settings.fps, max: 60 },
+    };
+    if (deviceId){
+      want.deviceId = { exact: deviceId };
+    } else {
+      want.facingMode = { ideal: facing };
+    }
+
+    const constraints = { video: want, audio: false };
+
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (err){
+      // Fallback: daha düşük çözünürlük dene
+      console.warn('Fallback:', err);
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1920 }, height: { ideal: 1080 },
+                   facingMode: facing }, audio: false
+        });
+        toast('4K alınamadı — FHD açıldı');
+      } catch(e){
+        throw e;
+      }
+    }
+
+    videoTrack = stream.getVideoTracks()[0];
+    currentCamId = videoTrack.getSettings().deviceId;
+    els.video.srcObject = stream;
+    await els.video.play();
+
+    // ImageCapture — tam çözünürlüklü fotoğraf için
+    try {
+      imageCapture = new ImageCapture(videoTrack);
+    } catch(e){ imageCapture = null; }
+
+    // Yetenekler
+    capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
+
+    // Flaş butonu
+    if (capabilities.torch){
+      els.flashBtn.disabled = false;
+    } else {
+      els.flashBtn.disabled = true;
+      els.flashBtn.classList.remove('on');
+    }
+
+    // Zoom bar
+    buildZoomBar();
+    updateCameraInfo();
+    buildManualControls();
+    layout();
+  }
+
+  function stopStream(){
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    videoTrack = null;
+  }
+
+  function updateCameraInfo(){
+    if (!videoTrack) return;
+    const s = videoTrack.getSettings();
+    const cam = cams.find(c => c.deviceId === s.deviceId);
+    const label = cam?.label || (s.facingMode === 'user' ? 'Ön' : 'Arka');
+    const w = s.width, h = s.height, fps = s.frameRate ? Math.round(s.frameRate) : '?';
+    els.cameraInfo.textContent = `${label} • ${w}×${h} • ${fps}fps`;
+  }
+
+  /* ==========================================================
+     ZOOM
+     ========================================================== */
+  function buildZoomBar(){
+    els.zoomBar.innerHTML = '';
+    if (!capabilities.zoom){
+      els.zoomBar.classList.add('hidden');
+      return;
+    }
+    els.zoomBar.classList.remove('hidden');
+    const zMin = capabilities.zoom.min;
+    const zMax = capabilities.zoom.max;
+
+    // 1× her zaman göster
+    addZoomBtn(1);
+    // Presets (donanım aralığındaysa)
+    ZOOM_PRESETS.slice(1).forEach(z => {
+      if (z <= zMax && z >= zMin) addZoomBtn(z);
+    });
+    // Maksimum (tele 10x zaten var, ama daha yüksekse ekle)
+    if (zMax > 10.5) addZoomBtn(Math.round(zMax));
+
+    function addZoomBtn(z){
+      const b = document.createElement('button');
+      b.className = 'zbtn';
+      b.textContent = z + '×';
+      b.dataset.zoom = z;
+      b.addEventListener('click', () => setZoom(z));
+      els.zoomBar.appendChild(b);
+    }
+
+    // Mevcut zoomu işaretle
+    const cur = videoTrack.getSettings().zoom || 1;
+    markActiveZoom(cur);
+  }
+
+  function markActiveZoom(z){
+    els.zoomBar.querySelectorAll('.zbtn').forEach(b => {
+      const bz = parseFloat(b.dataset.zoom);
+      b.classList.toggle('active', Math.abs(bz - z) < 0.1);
+    });
+  }
+
+  async function setZoom(z){
+    if (!capabilities.zoom) return;
+    try {
+      const clamped = clamp(z, capabilities.zoom.min, capabilities.zoom.max);
+      await videoTrack.applyConstraints({ advanced: [{ zoom: clamped }] });
+      markActiveZoom(clamped);
+      toast(`Zoom ${clamped.toFixed(1)}×`, 700);
+    } catch(e){ toast('Zoom değiştirilemedi'); }
+  }
+
+  // Pinch
+  let pinchStartDist = 0, pinchStartZoom = 1;
+  const touchDist = t => Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY);
+  els.stage.addEventListener('touchstart', e => {
+    if (e.touches.length === 2){
+      pinchStartDist = touchDist(e.touches);
+      pinchStartZoom = videoTrack?.getSettings().zoom || 1;
+    }
+  }, { passive:true });
+  els.stage.addEventListener('touchmove', e => {
+    if (e.touches.length === 2 && pinchStartDist > 0 && capabilities.zoom){
+      const factor = touchDist(e.touches) / pinchStartDist;
+      setZoom(pinchStartZoom * factor);
+    }
+  }, { passive:true });
+  els.stage.addEventListener('touchend', () => { pinchStartDist = 0; });
+
+  /* ==========================================================
+     FLAŞ
+     ========================================================== */
+  async function toggleTorch(){
+    if (!capabilities.torch) return;
+    torchOn = !torchOn;
+    try {
+      await videoTrack.applyConstraints({ advanced: [{ torch: torchOn }] });
+      els.flashBtn.classList.toggle('on', torchOn);
+      toast(torchOn ? '⚡ Açık' : '⚡ Kapalı', 800);
+    } catch(e){ toast('Flaş değiştirilemedi'); }
+  }
+
+  /* ==========================================================
+     MANUEL KONTROLLER
+     ========================================================== */
+  function buildManualControls(){
+    // ISO
+    if (capabilities.iso){
+      const {min, max} = capabilities.iso;
+      els.isoSlider.min = 0; els.isoSlider.max = 100;
+      els.isoSlider.disabled = false;
+      els.isoSlider.parentElement.querySelector('label').style.color = '';
+    } else {
+      els.isoSlider.disabled = true;
+      els.isoVal.textContent = 'yok';
+    }
+
+    // Enstantane
+    if (capabilities.exposureTime){
+      els.shutterSlider.disabled = false;
+    } else {
+      els.shutterSlider.disabled = true;
+      els.shutterVal.textContent = 'yok';
+    }
+
+    // Odak
+    const focusModes = capabilities.focusMode || [];
+    els.focusSelect.querySelectorAll('option').forEach(o => {
+      o.disabled = !focusModes.includes(o.value);
+    });
+    if (!focusModes.includes('manual')){
+      els.focusSlider.disabled = true;
+    }
+
+    // Beyaz dengesi
+    const wbModes = capabilities.whiteBalanceMode || [];
+    els.wbSelect.querySelectorAll('option').forEach(o => {
+      o.disabled = !wbModes.includes(o.value);
+    });
+
+    // EV
+    if (capabilities.exposureCompensation){
+      const {min, max, step} = capabilities.exposureCompensation;
+      els.evSlider.min = min; els.evSlider.max = max; els.evSlider.step = step || 0.1;
+    }
+
+    // Kayıtlı değerleri göster
+    els.evVal.textContent = (+els.evSlider.value).toFixed(1);
+  }
+
+  async function applyManual(constraint){
+    if (!videoTrack) return;
+    try {
+      await videoTrack.applyConstraints({ advanced: [constraint] });
+    } catch(e){
+      console.warn('applyConstraint fail:', constraint, e);
+    }
+  }
+
+  els.evSlider.addEventListener('input', () => {
+    settings.ev = +els.evSlider.value;
+    els.evVal.textContent = settings.ev.toFixed(1);
+    applyManual({ exposureCompensation: settings.ev });
+  });
+
+  els.isoSlider.addEventListener('input', () => {
+    if (!capabilities.iso) return;
+    const {min, max} = capabilities.iso;
+    if (+els.isoSlider.value === 0){
+      els.isoVal.textContent = 'oto';
+      applyManual({ iso: null });
+    } else {
+      const iso = Math.round(min + (max-min) * (+els.isoSlider.value)/100);
+      els.isoVal.textContent = iso;
+      applyManual({ iso });
+    }
+  });
+
+  els.shutterSlider.addEventListener('input', () => {
+    if (!capabilities.exposureTime) return;
+    const {min, max} = capabilities.exposureTime;
+    if (+els.shutterSlider.value === 0){
+      els.shutterVal.textContent = 'oto';
+      applyManual({ exposureTime: null });
+    } else {
+      // Logaritmik ölçek: 100 → min, 0 → max
+      const t = 1 - (+els.shutterSlider.value)/100;
+      const exp = min * Math.pow(max/min, t);
+      const us = Math.round(exp * 1e6);
+      els.shutterVal.textContent = us >= 1000 ? (us/1000).toFixed(1)+'ms' : us+'µs';
+      applyManual({ exposureTime: exp });
+    }
+  });
+
+  els.focusSelect.addEventListener('change', () => {
+    settings.focus = els.focusSelect.value;
+    applyManual({ focusMode: settings.focus });
+    els.focusSlider.disabled = settings.focus !== 'manual';
+  });
+
+  els.focusSlider.addEventListener('input', () => {
+    if (!capabilities.focusDistance) return;
+    const {min, max} = capabilities.focusDistance;
+    const t = +els.focusSlider.value / 100;
+    const dist = min + (max-min) * t;
+    els.focusVal.textContent = dist < 0.1 ? '∞' : dist.toFixed(1)+'m';
+    applyManual({ focusDistance: dist });
+  });
+
+  els.wbSelect.addEventListener('change', () => {
+    settings.wb = els.wbSelect.value;
+    applyManual({ whiteBalanceMode: settings.wb });
+  });
+
+  /* ==========================================================
+     DOKUNMATİK ODAK
+     ========================================================== */
+  function showFocusRing(x, y, locked = false){
+    const r = els.stage.getBoundingClientRect();
+    els.focusRing.style.left = (x - r.left) + 'px';
+    els.focusRing.style.top  = (y - r.top)  + 'px';
+    els.focusRing.classList.add('show');
+    els.focusRing.classList.toggle('locked', locked);
+    clearTimeout(showFocusRing._t);
+    showFocusRing._t = setTimeout(() => {
+      els.focusRing.classList.remove('show');
+    }, 1400);
+  }
+
+  async function tapToFocus(x, y){
+    if (!videoTrack) return;
+    const r = els.stage.getBoundingClientRect();
+    const px = (x - r.left) / r.width;
+    const py = (y - r.top)  / r.height;
+    showFocusRing(x, y);
+
+    if (!capabilities.focusMode?.includes('single-shot')) return;
+
+    try {
+      await videoTrack.applyConstraints({
+        advanced: [
+          { focusMode: 'single-shot', pointsOfInterest: [{ x: px, y: py }] },
+          { exposureMode: 'single-shot', pointsOfInterest: [{ x: px, y: py }] },
+        ]
+      });
+      showFocusRing(x, y, true);
+    } catch(e){
+      // Bazı tarayıcılar pointsOfInterest desteklemez
+      try {
+        await videoTrack.applyConstraints({
+          advanced: [{ focusMode: 'single-shot' }]
+        });
+      } catch(_){}
+    }
+  }
+
+  els.stage.addEventListener('pointerdown', e => {
+    if (e.target.closest('#topbar,#bottombar,#zoomBar,#modes,#settingsBtn')) return;
+    tapToFocus(e.clientX, e.clientY);
+  });
+
+  /* ==========================================================
+     FOTOĞRAF ÇEK
+     ========================================================== */
+  async function takePhoto(){
+    if (!videoTrack) return;
+
+    // Zamanlayıcı
+    if (settings.timer > 0){
+      const t = settings.timer;
+      toast(`⏱ ${t} saniye…`, t*1000);
+      for (let i = t; i > 0; i--){
+        setTimeout(() => { if (i>0) beep(660, 60); }, (t-i)*1000);
+      }
+      await new Promise(r => setTimeout(r, t*1000));
+    }
+
+    els.flash.classList.add('on');
+    setTimeout(() => els.flash.classList.remove('on'), 120);
+
+    let blob = null;
+
+    // 1. ImageCapture — TAM ÇÖZÜNÜRLÜK
+    if (imageCapture){
+      try {
+        blob = await imageCapture.takePhoto();
+      } catch(e){
+        console.warn('ImageCapture fail:', e);
+      }
+    }
+
+    // 2. Fallback: video karesinden
+    if (!blob){
+      const c = document.createElement('canvas');
+      c.width = els.video.videoWidth;
+      c.height = els.video.videoHeight;
+      c.getContext('2d').drawImage(els.video, 0, 0);
+      blob = await new Promise(r => c.toBlob(r, settings.format, settings.quality/100));
+    }
+
+    if (!blob){ toast('Fotoğraf alınamadı'); return; }
+
+    const ext = settings.format === 'image/png' ? 'png' : 'jpg';
+    const filename = `IMG_${todayStamp()}.${ext}`;
+    lastPhotoBlob = blob;
+    downloadBlob(blob, filename);
+
+    // Galeri butonuna küçük önizleme
+    const url = URL.createObjectURL(blob);
+    els.gallery.style.backgroundImage = `url(${url})`;
+    els.gallery.style.backgroundSize = 'cover';
+    els.gallery.textContent = '';
+
+    const sizeMB = (blob.size/1048576).toFixed(1);
+    toast(`✓ ${filename} (${sizeMB} MB)`);
+    beep(1320, 90);
+  }
+
+  /* ==========================================================
+     VIDEO KAYIT
+     ========================================================== */
+  function pickVideoMime(){
+    const types = [
+      'video/mp4;codecs=avc1,mp4a.40.2',
+      'video/mp4;codecs=h264,aac',
+      'video/mp4;codecs=h264',
+      'video/mp4',
+      'video/webm;codecs=h264',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+    ];
+    for (const t of types){
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported(t)) return t;
+    }
+    return '';
+  }
+
+  async function startRecording(){
+    if (!stream) return;
+
+    // Ses izi ekle (isteğe bağlı)
+    let recStream = stream;
+    if (settings.audio){
+      try {
+        const audio = await navigator.mediaDevices.getUserMedia({ audio: true });
+        recStream = new MediaStream([
+          ...stream.getVideoTracks(),
+          ...audio.getAudioTracks(),
+        ]);
+      } catch(e){ console.warn('Mikrofon alınamadı'); }
+    }
+
+    const mime = pickVideoMime();
+    const options = {
+      videoBitsPerSecond: settings.bitrate,
+      audioBitsPerSecond: 192000,
+    };
+    if (mime) options.mimeType = mime;
+
+    try {
+      mediaRecorder = new MediaRecorder(recStream, options);
+    } catch(e){
+      toast('Kayıt başlatılamadı'); return;
+    }
+
+    recordedChunks = [];
+    mediaRecorder.ondataavailable = e => {
+      if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+    };
+    mediaRecorder.onstop = () => {
+      const type = mime.includes('mp4') ? 'mp4' : 'webm';
+      const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+      const filename = `VID_${todayStamp()}.${type}`;
+      downloadBlob(blob, filename);
+      toast(`✓ ${filename} (${(blob.size/1048576).toFixed(1)} MB)`);
+
+      // Kayıt sesini temizle
+      recStream.getAudioTracks?.().forEach(t => t.stop());
+    };
+
+    mediaRecorder.start(1000);
+    isRecording = true;
+    recStartTime = Date.now();
+    els.shutter.classList.add('recording');
+    els.recIndicator.classList.add('on');
+    recTimer = setInterval(() => {
+      els.recTime.textContent = fmtTime(Date.now() - recStartTime);
+    }, 200);
+    beep(880, 100);
+    toast('● Kayıt başladı');
+  }
+
+  function stopRecording(){
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+    mediaRecorder.stop();
+    isRecording = false;
+    els.shutter.classList.remove('recording');
+    els.recIndicator.classList.remove('on');
+    clearInterval(recTimer);
+    beep(660, 120);
+  }
+
+  /* ==========================================================
+     SHUTTER BUTONU
+     ========================================================== */
+  els.shutter.addEventListener('click', () => {
+    if (currentMode === 'video'){
+      if (isRecording) stopRecording();
+      else startRecording();
+    } else {
+      takePhoto();
+    }
+  });
+
+  /* ==========================================================
+     MOD
+     ========================================================== */
+  document.querySelectorAll('.mbtn').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.mbtn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      currentMode = b.dataset.mode;
+      els.shutter.classList.toggle('video', currentMode === 'video' && !isRecording);
+
+      // Pro modda manuel kontrolleri göster
+      if (currentMode === 'pro'){
+        openSheet();
+      }
+    });
+  });
+
+  /* ==========================================================
+     KAMERA DEĞİŞTİR
+     ========================================================== */
+  async function switchCamera(){
+    if (!cams.length) return;
+
+    const currentIdx = cams.findIndex(c => c.deviceId === currentCamId);
+
+    if (currentIdx >= 0 && cams.length > 1){
+      // Sırayla bir sonraki kameraya geç
+      const nextIdx = (currentIdx + 1) % cams.length;
+      await startCamera(cams[nextIdx].deviceId);
+      toast(cams[nextIdx].label || `Kamera ${nextIdx+1}`);
+    } else {
+      // Facing mode değiştir
+      facing = facing === 'environment' ? 'user' : 'environment';
+      await startCamera();
+      toast(facing === 'user' ? 'Ön kamera' : 'Arka kamera');
+    }
+  }
+
+  els.switchBtn.addEventListener('click', switchCamera);
+
+  /* ==========================================================
+     GALERİ (son fotoğrafı indir)
+     ========================================================== */
+  els.gallery.addEventListener('click', () => {
+    if (lastPhotoBlob){
+      downloadBlob(lastPhotoBlob, `IMG_${todayStamp()}.jpg`);
+      toast('Son fotoğraf indiriliyor');
+    } else {
+      toast('Henüz fotoğraf yok');
+    }
+  });
+
+  /* ==========================================================
+     AYARLAR SHEET
+     ========================================================== */
+  function openSheet(){
+    els.sheet.classList.add('show');
+    els.sheetBack.classList.add('show');
+    populateCameraSelect();
+  }
+  function closeSheet(){
+    els.sheet.classList.remove('show');
+    els.sheetBack.classList.remove('show');
+  }
+
+  els.settingsBtn.addEventListener('click', openSheet);
+  els.sheetClose.addEventListener('click', closeSheet);
+  els.sheetBack.addEventListener('click', closeSheet);
+
+  /* ==========================================================
+     AYAR OLAYLARI
+     ========================================================== */
+  els.cameraSelect.addEventListener('change', async e => {
+    await startCamera(e.target.value);
+    closeSheet();
+    toast(cams.find(c => c.deviceId === e.target.value)?.label || 'Kamera değişti');
+  });
+
+  els.resSelect.addEventListener('change', async e => {
+    const [w,h] = e.target.value.split('x').map(Number);
+    settings.resW = w; settings.resH = h;
+    await startCamera(currentCamId);
+    toast(`Çözünürlük: ${w}×${h}`);
+  });
+
+  els.fpsSelect.addEventListener('change', async e => {
+    settings.fps = +e.target.value;
+    await startCamera(currentCamId);
+    toast(`FPS: ${settings.fps}`);
+  });
+
+  els.swGrid.addEventListener('click', () => {
+    settings.grid = !settings.grid;
+    els.swGrid.classList.toggle('on', settings.grid);
+    els.grid.classList.toggle('on', settings.grid);
+  });
+
+  els.swLevel.addEventListener('click', () => {
+    settings.level = !settings.level;
+    els.swLevel.classList.toggle('on', settings.level);
+    els.level.classList.toggle('on', settings.level);
+  });
+
+  els.swHist.addEventListener('click', () => {
+    settings.hist = !settings.hist;
+    els.swHist.classList.toggle('on', settings.hist);
+    els.histogram.classList.toggle('on', settings.hist);
+    if (settings.hist) startHistogram();
+  });
+
+  els.timerSelect.addEventListener('change', e => { settings.timer = +e.target.value; });
+  els.formatSelect.addEventListener('change', e => { settings.format = e.target.value; });
+  els.qualitySlider.addEventListener('input', e => {
+    settings.quality = +e.target.value;
+    els.qualityVal.textContent = settings.quality;
+  });
+  els.bitrateSelect.addEventListener('change', e => { settings.bitrate = +e.target.value; });
+
+  els.swAudio.addEventListener('click', () => {
+    settings.audio = !settings.audio;
+    els.swAudio.classList.toggle('on', settings.audio);
+  });
+
+  els.flashBtn.addEventListener('click', toggleTorch);
+
+  /* ==========================================================
+     HISTOGRAM
+     ========================================================== */
+  const histSampler = document.createElement('canvas');
+  histSampler.width = 160; histSampler.height = 120;
+  const histCtx = histSampler.getContext('2d', { willReadFrequently: true });
+  let histTimer = null;
+
+  function startHistogram(){
+    if (histTimer) return;
+    histTimer = setInterval(updateHistogram, HIST_INTERVAL);
+  }
+
+  function updateHistogram(){
+    if (!settings.hist || els.video.readyState < 2) return;
+    histCtx.drawImage(els.video, 0, 0, 160, 120);
+    const data = histCtx.getImageData(0, 0, 160, 120).data;
+
+    const hist = new Array(256).fill(0);
+    for (let i = 0; i < data.length; i += 4){
+      const lum = (data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114) | 0;
+      hist[lum]++;
+    }
+    const max = Math.max(...hist, 1);
+
+    const W = els.histCanvas.width, H = els.histCanvas.height;
+    hctx.clearRect(0, 0, W, H);
+    hctx.fillStyle = 'rgba(255,212,0,.85)';
+    const barW = W / 256;
+    for (let i = 0; i < 256; i++){
+      const h = (hist[i] / max) * (H - 4);
+      hctx.fillRect(i * barW, H - h, barW, h);
+    }
+  }
+
+  /* ==========================================================
+     SEVİYE (Level)
+     ========================================================== */
+  async function initLevel(){
+    // DeviceOrientation ile eğim
+    if (typeof DeviceOrientationEvent === 'undefined') return;
+    window.addEventListener('deviceorientation', e => {
+      if (!settings.level) return;
+      const beta = e.beta || 0;   // -90..90 (ön-arka)
+      const gamma = e.gamma || 0; // -90..90 (sol-sağ)
+      // Yatay çekim: beta ≈ 0 ise düz; dikey çekim: gamma ≈ 0
+      const tilt = Math.abs(beta) > 45 ? gamma : beta;
+      const c = els.level.querySelector('.center');
+      if (c) c.style.transform = `rotate(${clamp(tilt, -15, 15)}deg)`;
+    });
+  }
+
+  /* ==========================================================
+     SES
+     ========================================================== */
+  let audioCtx = null;
+  function beep(freq = 880, dur = 80){
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur/1000);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + dur/1000);
+    } catch(_){}
+  }
+
+  /* ==========================================================
+     BAŞLAT
+     ========================================================== */
+  els.btnStart.addEventListener('click', async () => {
+    els.btnStart.disabled = true;
+    els.splashErr.textContent = '';
+
+    try {
+      await startCamera();
+      cams = await listCameras();
+      // Cihaz adları için bir kez daha sormamız gerekiyor (label için izin sonrası)
+      cams = await listCameras();
+      populateCameraSelect();
+    } catch (err){
+      els.splashErr.textContent = 'Kamera açılamadı: ' + err.message;
+      els.btnStart.disabled = false;
+      return;
+    }
+
+    initLevel();
+    if (settings.grid) els.grid.classList.add('on');
+    if (settings.level) els.level.classList.add('on');
+
+    els.splash.style.opacity = '0';
+    setTimeout(() => els.splash.classList.add('hidden'), 400);
+  });
+
+  // Klavye kısayolları (masaüstü test için)
+  document.addEventListener('keydown', e => {
+    if (e.key === ' '){ e.preventDefault(); els.shutter.click(); }
+    if (e.key === 'g'){ els.swGrid.click(); }
+    if (e.key === 'l'){ els.swLevel.click(); }
+    if (e.key === 'h'){ els.swHist.click(); }
+    if (e.key === 'z'){ setZoom(1); }
+  });
+
+  // İlk yükleme
+  layout();
+
+})();
+</script>
+</body>
+</html>
+<script>
+console.log("Merhaba, konsol!");
+</script>
+</body>
+</html>
