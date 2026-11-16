@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0a0e13">
+<title>Keçi / Koyun Sayaç</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{--bg:#0a0e13;--panel:#111823;--panel2:#0e1520;--line:#1e293b;--fg:#e6eef7;--mut:#7d93a8;--acc:#22d3ee;--ok:#22c55e;--warn:#f59e0b;--err:#ef4444}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;user-select:none;overscroll-behavior:none}
+  #app{position:fixed;inset:0;display:flex;flex-direction:column}
+  #viewport{flex:1;position:relative;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center;touch-action:none;min-height:120px}
+  #stage{position:relative;will-change:transform}
+  #video{display:block;width:100%;height:100%;object-fit:fill;background:#000}
+  #video.night,#analysisVideo.night{filter:brightness(1.8) contrast(1.15)}
+  #analysisVideo{display:none;width:100%;height:100%;object-fit:fill;background:#000}
+  #analysisVideo.on{display:block}
+  #video.off{display:none}
+  #overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #hud{position:absolute;top:0;left:0;padding:10px;display:flex;gap:5px;flex-wrap:wrap;pointer-events:none;font-variant-numeric:tabular-nums;max-width:calc(100% - 62px);z-index:5}
+  .chip{background:rgba(10,14,19,.78);border:1px solid var(--line);padding:5px 9px;border-radius:999px;font-size:11px;backdrop-filter:blur(8px);white-space:nowrap}
+  .chip b{color:var(--acc);font-weight:700}
+  .chip.ok b{color:var(--ok)}
+  @keyframes flash{0%{background:var(--ok)}100%{background:rgba(10,14,19,.78)}}
+  .chip.flash{animation:flash .6s ease-out}
+  #quickbar{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:5px;z-index:6}
+  .qbtn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:rgba(10,14,19,.82);color:var(--fg);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);padding:0}
+  .qbtn:active{transform:scale(.92)}
+  .qbtn.on{background:var(--acc);color:#03242b;border-color:transparent}
+  .qbtn:disabled{opacity:.35}
+  #labelBar{position:absolute;left:8px;right:8px;bottom:8px;z-index:8;background:rgba(10,14,19,.94);border:1px solid var(--acc);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:6px}
+  #labelBar .t{font-size:12px;color:var(--mut);text-align:center}
+  #labelBar .b{display:flex;gap:6px}
+  #labelBar button{flex:1;padding:10px 2px;border-radius:10px;border:1px solid var(--line);background:#1a2330;color:var(--fg);font-size:13px;font-weight:700}
+  #panel{background:var(--panel);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+  .tabs{display:flex;border-bottom:1px solid var(--line);background:var(--panel2)}
+  .tab{flex:1;padding:9px 2px;background:none;border:none;color:var(--mut);font-size:12px;font-weight:600;position:relative}
+  .tab.active{color:var(--acc)}
+  .tab.active::after{content:"";position:absolute;left:20%;right:20%;bottom:-1px;height:2px;background:var(--acc);border-radius:2px}
+  .tab-content{display:none;padding:8px 10px 10px;max-height:36vh;overflow-y:auto}
+  .tab-content.active{display:block}
+  .row{display:flex;align-items:center;gap:8px;margin:6px 0}
+  .row label{flex:0 0 100px;color:var(--mut);font-size:11.5px}
+  .row input[type=range]{flex:1;accent-color:var(--acc);height:20px;background:transparent}
+  .row output{flex:0 0 55px;text-align:right;font-size:11px;color:var(--acc);font-weight:600}
+  .row select{flex:1;background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:12px}
+  .switch{position:relative;width:40px;height:22px;background:#1e293b;border-radius:999px;cursor:pointer;transition:background .2s;flex-shrink:0}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform .2s}
+  .switch.on{background:var(--acc)}
+  .switch.on::after{transform:translateX(18px)}
+  .btns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  button.action{flex:1;min-width:70px;padding:9px;border-radius:10px;border:1px solid var(--line);background:#1a2330;color:var(--fg);font-size:12px;font-weight:600;cursor:pointer}
+  button.action:active{transform:scale(.97)}
+  button.action:disabled{opacity:.4}
+  button.action.primary{background:var(--acc);color:#03242b;border-color:transparent}
+  button.action.danger{background:#3a1e1e;color:#fca5a5;border-color:#5a2929}
+  .note{font-size:11px;color:var(--mut);line-height:1.5;margin:4px 0}
+  .stats-list{display:flex;flex-direction:column;gap:5px;margin:6px 0}
+  .stat-row{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--panel2);border-radius:8px;font-size:12px;border-left:3px solid transparent}
+  .stat-row b{font-size:14px;color:var(--acc)}
+  .stat-row.empty{color:var(--mut);justify-content:center;font-size:11px;border:1px dashed var(--line);background:transparent}
+  .session-info{display:flex;gap:6px;margin:6px 0}
+  .info-box{flex:1;background:var(--panel2);border-radius:8px;padding:6px 8px;text-align:center}
+  .info-box .lbl{font-size:9.5px;color:var(--mut);text-transform:uppercase}
+  .info-box .val{font-size:14px;font-weight:700;color:var(--acc)}
+  #splash{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;background:radial-gradient(circle at center,rgba(10,14,19,.96),rgba(5,8,12,.99));z-index:20;transition:opacity .3s}
+  #splash h1{font-size:18px;font-weight:700}
+  #splash p{color:var(--mut);font-size:12px;max-width:340px;line-height:1.6}
+  #splash .icon{font-size:48px}
+  #splash button{flex:none;padding:12px 28px;font-size:14px;max-width:280px;width:100%}
+  #splashErr{color:var(--err)!important;min-height:14px}
+  .spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(34,211,238,.25);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:4px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #toast{position:fixed;left:50%;bottom:170px;transform:translateX(-50%) translateY(20px);background:rgba(30,41,59,.95);color:var(--fg);padding:9px 16px;border-radius:999px;font-size:12px;font-weight:600;opacity:0;pointer-events:none;transition:all .3s;border:1px solid var(--line);z-index:100;max-width:92%;text-align:center}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s}
+  .modal-back.show{opacity:1;pointer-events:auto}
+  .modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.9);z-index:201;background:#0e1218;border:1px solid var(--line);border-radius:16px;padding:20px;width:min(92vw,420px);max-height:85vh;overflow-y:auto;opacity:0;pointer-events:none;transition:all .25s}
+  .modal.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+  .modal h2{font-size:16px;margin:0 0 12px}
+  .modal .close{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--mut);font-size:22px;padding:4px}
+  .modal p{color:var(--mut);font-size:12px;line-height:1.6;margin:8px 0}
+  .modal .field{margin:10px 0}
+  .modal .field label{display:block;font-size:11px;color:var(--mut);margin-bottom:4px}
+  .modal .field input,.modal .field select{width:100%;background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:12px}
+  #mapWrap{width:100%;height:200px;border-radius:10px;overflow:hidden;margin:8px 0}
+  #map{width:100%;height:100%}
+  #wizard .step{display:none}
+  #wizard .step.on{display:block}
+  .wiz-dots{display:flex;gap:6px;justify-content:center;margin-top:14px}
+  .wiz-dots span{width:7px;height:7px;border-radius:50%;background:#2a3746}
+  .wiz-dots span.on{background:var(--acc)}
+  body.light{--bg:#f5f7fa;--panel:#fff;--panel2:#f0f3f7;--line:#dce3ea;--fg:#1a2330;--mut:#5a6b7d;--acc:#0891b2}
+  body.light .modal{background:#fff}
+  body.light button.action{background:#eef2f6}
+  .hidden{display:none!important}
+  .big-ui .qbtn{width:48px;height:48px;font-size:20px}
+  .big-ui .tab{padding:12px 2px;font-size:13px}
+  .big-ui button.action{padding:12px;font-size:13px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="viewport">
+    <div id="stage">
+      <video id="video" playsinline muted autoplay></video>
+      <video id="analysisVideo" playsinline muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
+    <div id="hud">
+      <div class="chip ok" id="chipTotal">Toplam: <b id="hudTotal">0</b></div>
+      <div class="chip">Ekranda: <b id="hudVisible">0</b></div>
+      <div class="chip">FPS: <b id="hudFps">0</b></div>
+      <div class="chip" id="chipLearn">Öğrenme: <b id="hudSamples">0</b></div>
+      <div class="chip" id="chipStatus">Hazır</div>
+    </div>
+    <div id="quickbar">
+      <button class="qbtn" id="btnTorch" title="Flaş">🔦</button>
+      <button class="qbtn" id="btnGrid" title="Izgara">▦</button>
+      <button class="qbtn" id="btnNight" title="Gece görünümü">🌙</button>
+      <button class="qbtn" id="btnRoi" title="Sayım bölgesi">⛶</button>
+      <button class="qbtn" id="btnShot" title="Fotoğraf">📷</button>
+      <button class="qbtn" id="btnTheme" title="Tema">☀️</button>
+    </div>
+    <div id="labelBar" class="hidden">
+      <div class="t" id="labelTitle">Bu hayvan nedir?</div>
+      <div class="b">
+        <button data-lab="goat">🐐 Keçi</button>
+        <button data-lab="sheep">🐑 Koyun</button>
+        <button data-lab="cow">🐄 İnek</button>
+        <button data-lab="ignore">🚫 Sayma</button>
+        <button data-lab="">✕</button>
+      </div>
+    </div>
+    <div id="splash">
+      <div class="icon">🐐</div>
+      <h1>Keçi / Koyun Sayaç</h1>
+      <p>Hayvanları bulur, takip eder ve sayar. Keçi ile koyunu ayırmak için ilk kullanımda ona <b>öğretmen</b> gerekir: ekranda bir keçiye, sonra bir koyuna dokunup türünü seç.</p>
+      <button class="action primary" id="btnStart">Kamerayı Başlat</button>
+      <p id="splashErr"></p>
+    </div>
+  </div>
+
+  <div id="panel">
+    <div class="tabs">
+      <button class="tab active" data-tab="detect">Tespit</button>
+      <button class="tab" data-tab="teach">Öğret</button>
+      <button class="tab" data-tab="camera">Kamera</button>
+      <button class="tab" data-tab="stats">Sayım</button>
+      <button class="tab" data-tab="more">Daha</button>
+    </div>
+
+    <div class="tab-content active" data-content="detect">
+      <div class="row"><label>Algılama</label>
+        <select id="modelBase"><option value="lite_mobilenet_v2">Hızlı (lite)</option><option value="mobilenet_v2">Hassas (yavaş)</option></select></div>
+      <div class="row"><label>Güven eşiği</label><input id="score" type="range" min="0.15" max="0.9" step="0.05" value="0.30"><output id="scoreOut">0.30</output></div>
+      <div class="row"><label>Onay karesi</label><input id="confirm" type="range" min="1" max="8" step="1" value="3"><output id="confirmOut">3</output></div>
+      <div class="row"><label>Sesli uyarı</label><div class="switch on" id="swSound"></div></div>
+      <div class="row"><label>Gece (eşik düşür)</label><div class="switch" id="swNightDetect"></div></div>
+      <div class="row"><label>Hareketsiz uyarı</label><div class="switch" id="swAnomaly"></div></div>
+      <p class="note">Sayım için hayvanın sahnede en az “onay karesi” kadar görünmesi gerekir. Aynı hayvan kısa süre kaybolup dönerse tekrar sayılmaz.</p>
+    </div>
+
+    <div class="tab-content" data-content="teach">
+      <p class="note"><b>Nasıl öğretilir:</b> Ekrandaki bir hayvanın kutusuna dokun, türünü seç. Keçi ve koyun için en az 5–10’ar örnek (farklı açı/ışıkta) ver. Sürü tek türse kameraya o sürüyü tutup aşağıdaki “Hepsi …” düğmesine bas.</p>
+      <div class="stat-row" id="teachCounts">Örnek: yok</div>
+      <div class="btns">
+        <button class="action" id="btnAllGoat">🐐 Ekrandakilerin hepsi KEÇİ</button>
+        <button class="action" id="btnAllSheep">🐑 Hepsi KOYUN</button>
+      </div>
+      <div class="btns">
+        <button class="action" id="btnAllCow">🐄 Hepsi İNEK</button>
+        <button class="action" id="btnAllIgnore">🚫 Hepsi SAYILMAZ</button>
+      </div>
+      <div class="row"><label>Benzerlik eşiği</label><input id="simT" type="range" min="0.4" max="0.9" step="0.01" value="0.6"><output id="simOut">0.60</output></div>
+      <div class="btns">
+        <button class="action" id="btnExportTrain">⬇ Eğitimi yedekle</button>
+        <button class="action" id="btnImportTrain">⬆ Yedek yükle</button>
+        <button class="action danger" id="btnClearTrain">Eğitimi sil</button>
+      </div>
+      <input type="file" id="trainFile" accept="application/json" class="hidden">
+    </div>
+
+    <div class="tab-content" data-content="camera">
+      <div class="row"><label>Zoom</label><input id="zoom" type="range" min="1" max="10" step="0.1" value="1"><output id="zoomOut">1.0×</output></div>
+      <div class="row"><label>FOV</label><input id="fov" type="range" min="40" max="100" step="1" value="65"><output id="fovOut">65°</output></div>
+      <div class="row"><label>Hayvan eni (m)</label><input id="width" type="range" min="0.3" max="1.6" step="0.05" value="0.7"><output id="widthOut">0.70</output></div>
+      <div class="row"><label>Time-lapse</label><select id="timelapseSec"><option value="0">Kapalı</option><option value="2">2 sn</option><option value="5">5 sn</option><option value="10">10 sn</option></select></div>
+      <div class="row"><label>Seri çekim</label><div class="switch" id="swBurst"></div></div>
+      <div class="row"><label>Gece fotoğrafı</label><div class="switch" id="swNightAvg"></div></div>
+      <div class="btns"><button class="action" id="btnResetZoom">Zoom Sıfırla</button></div>
+    </div>
+
+    <div class="tab-content" data-content="stats">
+      <div class="session-info">
+        <div class="info-box"><div class="lbl">Toplam</div><div class="val" id="statTotal">0</div></div>
+        <div class="info-box"><div class="lbl">Süre</div><div class="val" id="statTime">00:00</div></div>
+        <div class="info-box"><div class="lbl">İz</div><div class="val" id="statTracks">0</div></div>
+      </div>
+      <div class="stats-list" id="statsList"></div>
+      <div class="btns">
+        <button class="action primary" id="btnSaveCount">💾 Sayımı Kaydet</button>
+        <button class="action" id="btnCsv">📊 CSV</button>
+        <button class="action" id="btnPdf">📄 PDF</button>
+      </div>
+      <div class="btns">
+        <button class="action" id="btnHistory">📜 Geçmiş</button>
+        <button class="action" id="btnMap">🗺️ Harita</button>
+        <button class="action" id="btnTrend">📈 Grafik</button>
+        <button class="action" id="btnQr">🔗 QR</button>
+      </div>
+      <div class="btns"><button class="action danger" id="btnReset">Sayacı Sıfırla</button></div>
+    </div>
+
+    <div class="tab-content" data-content="more">
+      <div class="btns">
+        <button class="action" id="btnVideoAnalyze">🎬 Video Analiz</button>
+        <button class="action" id="btnRec">⏺ Video Kaydı</button>
+        <button class="action" id="btnWizard">🧭 Rehber</button>
+        <button class="action" id="btnBigUi">🔍 Büyük UI</button>
+        <button class="action" id="btnCalib">📏 Kalibrasyon</button>
+        <button class="action" id="btnVoice">🎤 Sesli Komut</button>
+        <button class="action" id="btnTts">🔊 Sesli Oku</button>
+        <button class="action" id="btnSettings">⚙️ Ayarlar</button>
+        <button class="action" id="btnAbout">ℹ️ Hakkında</button>
+      </div>
+      <div class="row" style="margin-top:10px"><label>Çoklu bölge</label><div class="switch" id="swMultiRoi"></div></div>
+      <div class="row"><label>Yoğunluk haritası</label><div class="switch" id="swHeatmap"></div></div>
+    </div>
+  </div>
+</div>
+
+<div id="modalBack" class="modal-back"></div>
+
+<div class="modal" id="mHistory"><button class="close" data-close>×</button><h2>Sayım Geçmişi</h2>
+  <div id="historyList" style="max-height:340px;overflow-y:auto"></div>
+  <div class="btns" style="margin-top:10px"><button class="action" id="btnClearHistory">Geçmişi Temizle</button></div></div>
+<div class="modal" id="mMap"><button class="close" data-close>×</button><h2>Sayım Konumları</h2>
+  <div id="mapWrap"><div id="map"></div></div>
+  <div id="mapList" style="font-size:11px;color:var(--mut);max-height:120px;overflow-y:auto"></div></div>
+<div class="modal" id="mTrend"><button class="close" data-close>×</button><h2>Tür Dağılımı</h2>
+  <canvas id="trendCanvas" width="360" height="200" style="width:100%;height:auto"></canvas></div>
+<div class="modal" id="mQr"><button class="close" data-close>×</button><h2>QR ile Paylaş</h2>
+  <div id="qrBox" style="display:flex;justify-content:center;padding:14px;background:#fff;border-radius:10px"></div>
+  <p style="text-align:center">Telefon kamerasıyla okutun</p></div>
+<div class="modal" id="mVideo"><button class="close" data-close>×</button><h2>Video Analiz</h2>
+  <p>Bir video seçin; oynatılırken sayım yapılır. Başlamadan önce sayacı sıfırlamanız önerilir.</p>
+  <div class="field"><input type="file" id="videoFile" accept="video/*"></div>
+  <div class="btns"><button class="action primary" id="btnStartAnalyze" disabled>Analizi Başlat</button><button class="action" id="btnStopAnalyze" disabled>Durdur</button></div>
+  <p id="analyzeStatus" style="color:var(--acc)"></p></div>
+<div class="modal" id="mSettings"><button class="close" data-close>×</button><h2>Ayarlar</h2>
+  <div class="field"><label>Kamera çözünürlüğü</label><select id="resSelect"><option value="1280x720">HD (önerilen)</option><option value="1920x1080">Full HD</option><option value="3840x2160">4K (yavaşlatır)</option></select></div>
+  <div class="field"><label>FPS</label><select id="fpsSelect"><option value="30">30</option><option value="60">60</option><option value="24">24</option></select></div>
+  <div class="field"><label>Fotoğraf formatı</label><select id="formatSelect"><option value="image/jpeg">JPEG</option><option value="image/png">PNG</option></select></div>
+  <div class="field"><label>Kalite</label><input type="range" id="qualitySlider" min="70" max="100" step="1" value="92" style="width:100%"><output id="qualityOut">92</output></div>
+  <div class="field"><label>Video bit hızı</label><select id="bitrateSelect"><option value="8000000">8 Mbps</option><option value="20000000">20 Mbps</option><option value="50000000">50 Mbps</option></select></div>
+  <div class="btns"><button class="action primary" id="btnSaveSettings">Kaydet</button></div>
+  <p>Çözünürlük/FPS değişikliği kamera yeniden başlatılınca geçerli olur.</p></div>
+<div class="modal" id="mWizard"><button class="close" data-close>×</button>
+  <div id="wizard">
+    <div class="step on"><h2>1. Kamerayı Başlat</h2><p>“Kamerayı Başlat”a dokun ve kamera iznini ver. İlk açılışta modeller indirilir (internet gerekir).</p></div>
+    <div class="step"><h2>2. Türü Öğret</h2><p>Ekranda bir keçiye dokun → “Keçi”. Bir koyuna dokun → “Koyun”. Her tür için 5–10 farklı hayvan göster. Öğretilen örnekler telefonda saklanır; tekrar öğretmen gerekmez. Yanlış etiketlenen hayvana dokunup düzeltebilirsin.</p></div>
+    <div class="step"><h2>3. Sayım Bölgesi</h2><p>⛶ düğmesine basıp sayılacak alanı sürükleyerek çiz. Dışı karartılır, dışındakiler sayılmaz.</p></div>
+    <div class="step"><h2>4. Sayımı İzle</h2><p>Hayvanlar onay karesi kadar göründüğünde sayılır. “Sayım” sekmesinden toplamı görür, kaydeder ve CSV/PDF alırsın. Sonuç yardımcıdır; önemli sayımda kendin de doğrula.</p></div>
+    <div class="wiz-dots" id="wizDots"></div>
+    <div class="btns" style="margin-top:12px"><button class="action" id="wizPrev">Geri</button><button class="action primary" id="wizNext">İleri</button></div>
+  </div></div>
+<div class="modal" id="mCalib"><button class="close" data-close>×</button><h2>Mesafe Kalibrasyonu</h2>
+  <p>Bilinen genişlikte bir nesneyi (ör. A4 kağıt 29.7 cm) belirli mesafeden tutup ekrandaki kutu genişliğini piksel olarak gir.</p>
+  <div class="field"><label>Gerçek genişlik (cm)</label><input type="number" id="calibReal" value="29.7" step="0.1"></div>
+  <div class="field"><label>Mesafe (cm)</label><input type="number" id="calibDist" value="100" step="1"></div>
+  <div class="field"><label>Piksel genişliği</label><input type="number" id="calibPx" value="200" step="1"></div>
+  <div class="btns"><button class="action primary" id="btnCalibCalc">Hesapla</button></div>
+  <p id="calibResult" style="color:var(--acc)"></p></div>
+<div class="modal" id="mAbout"><button class="close" data-close>×</button><h2>Hakkında</h2>
+  <p><b>Keçi / Koyun Sayaç</b> — sürüm 4</p>
+  <p>Hayvanı COCO-SSD bulur; keçi/koyun/inek ayrımını, senin öğrettiğin örneklerle MobileNet özellik karşılaştırması yapar. Hazır modelde “keçi” sınıfı olmadığı için ayrım ancak senin örneklerin kadar iyidir. Her şey telefonda çalışır, görüntü dışarı gönderilmez.</p></div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(() => {
+"use strict";
+/* ================= SABİTLER ================= */
+const CLS = {
+  goat:{name:'Keçi',emoji:'🐐',color:'#22c55e'},
+  sheep:{name:'Koyun',emoji:'🐑',color:'#a3e635'},
+  cow:{name:'İnek',emoji:'🐄',color:'#eab308'},
+  animal:{name:'Hayvan (?)',emoji:'❔',color:'#94a3b8'},
+  ignore:{name:'Sayılmaz',emoji:'🚫',color:'#64748b'},
+};
+// COCO'da "keçi" yok; keçiler çoğunlukla bunlardan biri olarak bulunur. Hepsi aday sayılır, tür kararını öğrenen sınıflandırıcı verir.
+const CANDIDATES = new Set(['sheep','cow','horse','dog','bear','cat']);
+const TRACK_TTL = 1500, COUNTED_TTL = 6000, DETECT_HZ = 8, MIN_PER_CLASS = 3, MAX_PER_CLASS = 200, K = 5;
+
+/* ================= DOM ================= */
+const els = new Proxy({}, {get:(t,k)=>t[k]||(t[k]=document.getElementById(k))});
+const ctx = els.overlay.getContext('2d');
+
+/* ================= DURUM ================= */
+let coco=null, mobNet=null;
+let stream=null, videoTrack=null, imageCapture=null;
+let running=false, zoom=1, nativeZoom=null, torchOn=false, torchAvailable=false;
+let gridOn=false, nightOn=false, soundOn=true, nightDetect=false, anomalyOn=false;
+let burstOn=false, nightAvgOn=false, multiRoiOn=false, heatmapOn=false;
+let confirmFrames=3, timelapseSec=0, burstTimer=null, timelapseTimer=null;
+let rois=[], roiMode='none', roiStart=null, roiCurrent=null;
+let tracks=[], nextTrackId=1, sessionStart=0;
+const counted=new Map();               // trackId -> son etiket
+let speciesCounts={}, totalCount=0;
+let lastDetect=0, fpsSmooth=0, lastDetections=[], busy=false;
+let settings={resW:1280,resH:720,fps:30,format:'image/jpeg',quality:92,bitrate:8000000};
+let audioCtx=null, gpsPos=null, analysisMode=false;
+let currentTheme='dark', bigUi=false, calibFocal=null, simT=0.6, modelBase='lite_mobilenet_v2';
+let samples=[];                        // {l, e:Float32Array}
+let pendingDet=null, hintShown=false, lum=128, lumAt=0, photoBusy=false, statusBase='Hazır';
+
+/* ================= YARDIMCI ================= */
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const nowMs=()=>performance.now();
+function toast(msg,ms=1900){els.toast.textContent=msg;els.toast.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>els.toast.classList.remove('show'),ms)}
+const fmtTime=ms=>{const s=Math.floor(ms/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+function stamp(){const d=new Date(),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`}
+function iou(a,b){const ix=Math.max(0,Math.min(a[0]+a[2],b[0]+b[2])-Math.max(a[0],b[0]));const iy=Math.max(0,Math.min(a[1]+a[3],b[1]+b[3])-Math.max(a[1],b[1]));const i=ix*iy,u=a[2]*a[3]+b[2]*b[3]-i;return u>0?i/u:0}
+function downloadBlob(b,fn){const u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
+const asciiTr=s=>String(s).replace(/[çÇğĞıİöÖşŞüÜ]/g,c=>({'ç':'c','Ç':'C','ğ':'g','Ğ':'G','ı':'i','İ':'I','ö':'o','Ö':'O','ş':'s','Ş':'S','ü':'u','Ü':'U'}[c]));
+function setStatus(t,html){statusBase=t;els.chipStatus.innerHTML=html||'';if(!html)els.chipStatus.textContent=t}
+const curSrc=()=>analysisMode?els.analysisVideo:els.video;
+
+/* ================= YERLEŞİM ================= */
+function layout(){
+  const vw=els.viewport.clientWidth,vh=els.viewport.clientHeight,src=curSrc();
+  const ar=(src.videoWidth&&src.videoHeight)?src.videoWidth/src.videoHeight:16/9;
+  let w=vw,h=w/ar;if(h>vh){h=vh;w=h*ar}
+  els.stage.style.width=w+'px';els.stage.style.height=h+'px';
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  els.overlay.width=Math.round(w*dpr);els.overlay.height=Math.round(h*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);redraw();
+}
+addEventListener('resize',layout);addEventListener('orientationchange',()=>setTimeout(layout,300));
+els.video.addEventListener('loadedmetadata',layout);els.analysisVideo.addEventListener('loadedmetadata',layout);
+
+/* ================= KAMERA ================= */
+async function startCamera(){
+  if(!navigator.mediaDevices?.getUserMedia)throw new Error('Bu tarayıcı kamerayı desteklemiyor (HTTPS gerekir).');
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:settings.resW},height:{ideal:settings.resH},frameRate:{ideal:settings.fps,max:60}},audio:false});
+  els.video.srcObject=stream;await els.video.play();
+  videoTrack=stream.getVideoTracks()[0];
+  try{imageCapture=new ImageCapture(videoTrack)}catch(_){imageCapture=null}
+  const caps=videoTrack.getCapabilities?videoTrack.getCapabilities():{};
+  if(caps.zoom){nativeZoom=caps.zoom;els.zoom.min=nativeZoom.min;els.zoom.max=Math.min(nativeZoom.max,10);els.zoom.step=nativeZoom.step||0.1;els.zoom.value=nativeZoom.min;zoom=nativeZoom.min}
+  else{nativeZoom=null;els.zoom.min=1;els.zoom.max=6;els.zoom.step=0.1;els.zoom.value=1;zoom=1}
+  torchAvailable=!!caps.torch;els.btnTorch.disabled=!torchAvailable;
+  updateZoomLabel();layout();
+}
+async function setZoom(v){
+  zoom=clamp(v,+els.zoom.min,+els.zoom.max);els.zoom.value=zoom;updateZoomLabel();
+  if(nativeZoom){try{await videoTrack.applyConstraints({advanced:[{zoom}]})}catch(_){}els.stage.style.transform='none'}
+  else els.stage.style.transform=`scale(${zoom})`;
+}
+const updateZoomLabel=()=>{els.zoomOut.textContent=zoom.toFixed(1)+'×'};
+let pinchD=0,pinchZ=1;
+const touchDist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+els.viewport.addEventListener('touchstart',e=>{if(roiMode==='drawing')return;if(e.touches.length===2){pinchD=touchDist(e.touches);pinchZ=zoom}},{passive:true});
+els.viewport.addEventListener('touchmove',e=>{if(roiMode==='drawing')return;if(e.touches.length===2&&pinchD>0)setZoom(pinchZ*(touchDist(e.touches)/pinchD))},{passive:true});
+els.viewport.addEventListener('touchend',()=>{pinchD=0});
+async function toggleTorch(){if(!torchAvailable)return toast('Bu cihazda flaş yok');torchOn=!torchOn;
+  try{await videoTrack.applyConstraints({advanced:[{torch:torchOn}]});els.btnTorch.classList.toggle('on',torchOn)}catch(e){torchOn=!torchOn;toast('Flaş değiştirilemedi')}}
+
+/* ================= BÖLGE (ROI) ================= */
+function setRoiMode(m){roiMode=m;els.btnRoi.classList.toggle('on',m==='drawing'||rois.length>0);if(m==='drawing')toast('Sayım bölgesi için ekranda sürükle',2400)}
+function getPoint(e){const r=els.stage.getBoundingClientRect(),p=e.touches&&e.touches[0]?e.touches[0]:(e.changedTouches&&e.changedTouches[0]?e.changedTouches[0]:e);
+  return{x:clamp((p.clientX-r.left)/r.width,0,1),y:clamp((p.clientY-r.top)/r.height,0,1)}}
+function startRoi(e){if(roiMode!=='drawing')return;e.preventDefault();roiStart=getPoint(e);roiCurrent={...roiStart}}
+function moveRoi(e){if(!roiStart)return;e.preventDefault();roiCurrent=getPoint(e);redraw()}
+function endRoi(e){if(!roiStart)return;e.preventDefault();roiCurrent=getPoint(e);
+  const x1=Math.min(roiStart.x,roiCurrent.x),y1=Math.min(roiStart.y,roiCurrent.y),x2=Math.max(roiStart.x,roiCurrent.x),y2=Math.max(roiStart.y,roiCurrent.y);
+  if(x2-x1>0.05&&y2-y1>0.05){const r={id:Date.now(),x:x1,y:y1,w:x2-x1,h:y2-y1,name:''};if(multiRoiOn)rois.push(r);else rois=[r];rois.forEach((q,i)=>q.name='Bölge '+(i+1));saveSettings();toast('Bölge kaydedildi ('+rois.length+')')}
+  roiStart=null;roiCurrent=null;setRoiMode('none');redraw()}
+els.stage.addEventListener('mousedown',startRoi);els.stage.addEventListener('mousemove',moveRoi);addEventListener('mouseup',endRoi);
+els.stage.addEventListener('touchstart',startRoi,{passive:false});els.stage.addEventListener('touchmove',moveRoi,{passive:false});els.stage.addEventListener('touchend',endRoi,{passive:false});
+const inAnyRoi=b=>{if(!rois.length)return true;const cx=b[0]+b[2]/2,cy=b[1]+b[3]/2;return rois.some(r=>cx>=r.x&&cx<=r.x+r.w&&cy>=r.y&&cy<=r.y+r.h)};
+
+/* ================= MESAFE ================= */
+function focalPixels(){if(calibFocal)return calibFocal;const W=curSrc().videoWidth||1280;return(W/2)/Math.tan((+els.fov.value)*Math.PI/360)}
+function estimateDistance(pxW){if(!pxW||pxW<=0)return null;const d=(+els.width.value*focalPixels())/pxW;return isFinite(d)?d:null}
+
+/* ================= ÖĞRENEN SINIFLANDIRICI ================= */
+const dot=(a,b)=>{let s=0;for(let i=0;i<a.length;i++)s+=a[i]*b[i];return s};
+const classCount=()=>{const c={};for(const s of samples)c[s.l]=(c[s.l]||0)+1;return c};
+const classifierReady=()=>!!mobNet&&Object.values(classCount()).filter(n=>n>=MIN_PER_CLASS).length>=2;
+async function embed(src,bb){
+  if(!mobNet)return null;
+  const vw=src.videoWidth,vh=src.videoHeight;if(!vw||!vh)return null;
+  let x=bb[0]*vw,y=bb[1]*vh,w=bb[2]*vw,h=bb[3]*vh;const px=w*.06,py=h*.06;
+  x=clamp(x-px,0,vw-2);y=clamp(y-py,0,vh-2);w=clamp(w+2*px,2,vw-x);h=clamp(h+2*py,2,vh-y);
+  if(!embed.c){embed.c=document.createElement('canvas');embed.c.width=embed.c.height=224;embed.x=embed.c.getContext('2d')}
+  embed.x.drawImage(src,x,y,w,h,0,0,224,224);
+  const t=mobNet.infer(embed.c,true);const a=await t.data();t.dispose&&t.dispose();
+  const e=Float32Array.from(a);let n=0;for(let i=0;i<e.length;i++)n+=e[i]*e[i];n=Math.sqrt(n)||1;for(let i=0;i<e.length;i++)e[i]/=n;return e;
+}
+function predict(e){
+  const sims=samples.map(s=>({l:s.l,s:dot(s.e,e)})).sort((a,b)=>b.s-a.s).slice(0,K);
+  if(!sims.length||sims[0].s<simT)return{l:'animal',c:0};
+  const w={};let tot=0;for(const t of sims){const v=Math.pow(Math.max(t.s,0),8);w[t.l]=(w[t.l]||0)+v;tot+=v}
+  let best='animal',bv=0;for(const k in w)if(w[k]>bv){bv=w[k];best=k}
+  return{l:best,c:tot?bv/tot:0};
+}
+function bestVote(tr){let b='animal',v=0;for(const k in tr.votes)if(tr.votes[k]>v){v=tr.votes[k];b=k}return b}
+async function classifyTracks(src,dets,now){
+  let budget=3;
+  const ready=classifierReady();
+  if(!ready&&mobNet&&!hintShown&&dets.length&&running){hintShown=true;toast('Tür ayrımı için önce öğret: bir keçiye, bir koyuna dokun',3500)}
+  for(const d of dets){
+    const tr=tracks.find(t=>t.id===d.trackId);if(!tr||tr.forced)continue;
+    if(!ready){tr.label='animal';d.label=tr.label;continue}
+    const due=now-tr.lastCls>(tr.nCls<5?250:3000);if(!due||budget<=0)continue;
+    const e=await embed(src,d.bbox);if(!e)continue;
+    tr.lastCls=now;tr.nCls++;budget--;
+    const p=predict(e);
+    for(const k in tr.votes)tr.votes[k]*=0.9;
+    if(p.l!=='animal')tr.votes[p.l]=(tr.votes[p.l]||0)+Math.max(.2,p.c);
+    tr.label=bestVote(tr);d.label=tr.label;
+  }
+}
+async function addSamples(items,label){ // items: [{src,bbox}]
+  const c=classCount();let added=0;
+  for(const it of items){if((c[label]||0)>=MAX_PER_CLASS){toast(CLS[label].name+' için örnek sınırı doldu ('+MAX_PER_CLASS+')');break}
+    const e=await embed(it.src,it.bbox);if(!e)continue;
+    const s={l:label,e};samples.push(s);c[label]=(c[label]||0)+1;added++;
+    idb('samples','readwrite',st=>st.add({l:label,e:e.buffer.slice(0)})).catch(()=>{});}
+  updateTeachUI();return added;
+}
+function updateTeachUI(){
+  const c=classCount(),parts=['goat','sheep','cow','ignore'].filter(k=>c[k]).map(k=>`${CLS[k].emoji} ${c[k]}`);
+  els.teachCounts.textContent='Örnek: '+(parts.length?parts.join('  ·  '):'yok');
+  els.hudSamples.textContent=samples.length;
+  const need=[];if(classifierReady())els.teachCounts.textContent+='  ✓ hazır';else els.teachCounts.textContent+='  (en az 2 türden '+MIN_PER_CLASS+'’er örnek lazım)';
+}
+function labelTrack(trId,label){const tr=tracks.find(t=>t.id===trId);if(!tr)return;tr.forced=label;tr.label=label;tr.votes={[label]:999}}
+async function applyLabel(label){
+  const d=pendingDet;hideLabelBar();if(!d||!label)return;
+  const n=await addSamples([{src:curSrc(),bbox:d.bbox}],label);
+  labelTrack(d.trackId,label);finalizeCounts(nowMs());redraw();
+  toast(`${CLS[label].emoji} ${CLS[label].name} olarak öğrenildi`+(n?'':' (örnek alınamadı)'));
+}
+async function labelAll(label){
+  if(!lastDetections.length)return toast('Ekranda hayvan yok');
+  const n=await addSamples(lastDetections.map(d=>({src:curSrc(),bbox:d.bbox})),label);
+  lastDetections.forEach(d=>labelTrack(d.trackId,label));finalizeCounts(nowMs());redraw();
+  toast(`${n} örnek ${CLS[label].name} diye eklendi`);
+}
+/* dokunarak etiketleme */
+function showLabelBar(d){pendingDet=d;const tr=tracks.find(t=>t.id===d.trackId);
+  els.labelTitle.textContent='Bu hayvan nedir? (şu an: '+CLS[(tr&&tr.label)||'animal'].name+')';els.labelBar.classList.remove('hidden')}
+function hideLabelBar(){els.labelBar.classList.add('hidden');pendingDet=null}
+els.stage.addEventListener('click',e=>{
+  if(roiMode==='drawing'||!running)return;
+  const r=els.stage.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+  const hit=lastDetections.filter(d=>x>=d.bbox[0]&&x<=d.bbox[0]+d.bbox[2]&&y>=d.bbox[1]&&y<=d.bbox[1]+d.bbox[3]).sort((a,b)=>a.bbox[2]*a.bbox[3]-b.bbox[2]*b.bbox[3])[0];
+  if(hit)showLabelBar(hit);else hideLabelBar();
+});
+els.labelBar.querySelectorAll('button').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const l=b.dataset.lab;if(!l)hideLabelBar();else applyLabel(l)}));
+
+/* ================= TAKİP ================= */
+function updateTracks(dets,now){
+  const pairs=[];
+  dets.forEach((d,i)=>{tracks.forEach((tr,j)=>{
+    const dt=Math.min(1,(now-tr.last)/1000),pb=[tr.bbox[0]+tr.vel[0]*dt,tr.bbox[1]+tr.vel[1]*dt,tr.bbox[2],tr.bbox[3]];
+    let s=Math.max(iou(d.bbox,pb),iou(d.bbox,tr.bbox));
+    if(s<0.2){const dx=(d.bbox[0]+d.bbox[2]/2)-(pb[0]+pb[2]/2),dy=(d.bbox[1]+d.bbox[3]/2)-(pb[1]+pb[3]/2);const lim=Math.max(d.bbox[2],d.bbox[3])*0.5;const dist=Math.hypot(dx,dy);
+      const sizeOk=Math.min(d.bbox[2],tr.bbox[2])/Math.max(d.bbox[2],tr.bbox[2])>0.6;
+      if(dist<lim&&sizeOk)s=0.2+0.1*(1-dist/lim)}
+    if(s>=0.2)pairs.push({i,j,s})})});
+  pairs.sort((a,b)=>b.s-a.s);
+  const usedD=new Set(),usedT=new Set();
+  for(const p of pairs){if(usedD.has(p.i)||usedT.has(p.j))continue;usedD.add(p.i);usedT.add(p.j);
+    const d=dets[p.i],tr=tracks[p.j],dt=Math.max(0.05,(now-tr.last)/1000);
+    tr.vel=[.65*tr.vel[0]+.35*(d.bbox[0]-tr.bbox[0])/dt,.65*tr.vel[1]+.35*(d.bbox[1]-tr.bbox[1])/dt];
+    tr.bbox=d.bbox;tr.last=now;tr.hits++;tr.inRoi=d.inRoi;d.trackId=tr.id;d.label=tr.label}
+  dets.forEach((d,i)=>{if(usedD.has(i))return;
+    const tr={id:nextTrackId++,bbox:d.bbox,vel:[0,0],last:now,hits:1,inRoi:d.inRoi,counted:false,label:'animal',votes:{},nCls:0,lastCls:0,forced:null,anchor:[d.bbox[0]+d.bbox[2]/2,d.bbox[1]+d.bbox[3]/2],anchorT:now,warned:false};
+    tracks.push(tr);d.trackId=tr.id;d.label='animal'});
+  tracks=tracks.filter(tr=>now-tr.last<(tr.counted?COUNTED_TTL:TRACK_TTL));
+  // hareketsizlik
+  for(const tr of tracks){if(tr.last!==now)continue;const cx=tr.bbox[0]+tr.bbox[2]/2,cy=tr.bbox[1]+tr.bbox[3]/2;
+    if(Math.hypot(cx-tr.anchor[0],cy-tr.anchor[1])>0.04){tr.anchor=[cx,cy];tr.anchorT=now;tr.warned=false}
+    else if(anomalyOn&&!tr.warned&&now-tr.anchorT>20000){tr.warned=true;toast(`⚠️ ${CLS[tr.label].name} 20 sn’dir hareketsiz`,2500)}}
+}
+function finalizeCounts(now){
+  const ready=classifierReady();let fresh=false;
+  for(const tr of tracks){
+    if(!tr.counted&&tr.hits>=confirmFrames&&tr.inRoi&&(!ready||tr.forced||tr.nCls>=2||tr.hits>=confirmFrames*3)){tr.counted=true;fresh=true}
+    if(tr.counted)counted.set(tr.id,tr.label);
+  }
+  speciesCounts={};totalCount=0;
+  for(const l of counted.values()){if(l==='ignore')continue;speciesCounts[l]=(speciesCounts[l]||0)+1;totalCount++}
+  if(fresh){els.chipTotal.classList.remove('flash');void els.chipTotal.offsetWidth;els.chipTotal.classList.add('flash');if(soundOn)beep(880,70)}
+  updateStatsUI();
+}
+
+/* ================= TESPİT ================= */
+function brightness(src){if(nowMs()-lumAt<2000)return lum;lumAt=nowMs();
+  try{if(!brightness.c){brightness.c=document.createElement('canvas');brightness.c.width=16;brightness.c.height=9;brightness.x=brightness.c.getContext('2d',{willReadFrequently:true})}
+    brightness.x.drawImage(src,0,0,16,9);const d=brightness.x.getImageData(0,0,16,9).data;let s=0;for(let i=0;i<d.length;i+=4)s+=.299*d[i]+.587*d[i+1]+.114*d[i+2];lum=s/(d.length/4)}catch(_){}
+  return lum}
+async function detect(src,minScore){
+  if(!coco)return[];
+  const preds=await coco.detect(src,50,minScore);
+  const vw=src.videoWidth||1,vh=src.videoHeight||1;
+  let out=[];
+  for(const p of preds){if(!CANDIDATES.has(p.class))continue;const[x,y,w,h]=p.bbox;if(w<8||h<8)continue;
+    const bbox=[x/vw,y/vh,w/vw,h/vh];out.push({raw:p.class,score:p.score,bbox,pxW:w,dist:estimateDistance(w),inRoi:inAnyRoi(bbox),label:'animal'})}
+  // sınıflar arası NMS: aynı hayvana hem "koyun" hem "inek" kutusu gelmesin
+  out.sort((a,b)=>b.score-a.score);const kept=[];
+  for(const d of out){if(kept.every(k=>iou(k.bbox,d.bbox)<0.55))kept.push(d)}
+  return kept;
+}
+async function step(src){
+  const t0=nowMs();let minScore=+els.score.value;
+  if(nightDetect&&brightness(src)<60)minScore=Math.max(.15,minScore-.1);
+  const dets=await detect(src,minScore);
+  updateTracks(dets,t0);await classifyTracks(src,dets,t0);finalizeCounts(t0);
+  lastDetections=dets;redraw();
+  const dt=Math.max(1,nowMs()-t0);fpsSmooth=fpsSmooth?fpsSmooth*.8+(1000/dt)*.2:1000/dt;
+  els.hudFps.textContent=fpsSmooth.toFixed(1);els.statTracks.textContent=tracks.length;
+}
+function loop(){
+  if(!running)return;
+  const src=curSrc(),now=nowMs();
+  if(analysisMode&&(src.ended)){els.analyzeStatus.textContent='Analiz bitti — sonuçlar Sayım sekmesinde';analysisMode=false;els.btnStartAnalyze.disabled=false;els.btnStopAnalyze.disabled=true}
+  else if(!busy&&now-lastDetect>1000/DETECT_HZ&&src.readyState>=2&&!src.paused){
+    busy=true;lastDetect=now;step(src).catch(e=>console.warn(e)).finally(()=>{busy=false});
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ================= ÇİZİM ================= */
+function redraw(){
+  const W=els.stage.clientWidth,H=els.stage.clientHeight;if(!W||!H)return;
+  ctx.clearRect(0,0,W,H);
+  if(gridOn)drawGrid(W,H);
+  rois.forEach(r=>drawRoi(W,H,r));
+  drawDetections(W,H);
+  if(roiStart&&roiCurrent)drawRoiPreview(W,H);
+  if(heatmapOn)drawHeatmap(W,H);
+}
+function drawGrid(W,H){ctx.strokeStyle='rgba(34,211,238,.18)';ctx.lineWidth=1;ctx.beginPath();
+  for(let i=1;i<3;i++){ctx.moveTo(W*i/3,0);ctx.lineTo(W*i/3,H);ctx.moveTo(0,H*i/3);ctx.lineTo(W,H*i/3)}ctx.stroke()}
+function drawRoi(W,H,r){const x=r.x*W,y=r.y*H,w=r.w*W,h=r.h*H;ctx.fillStyle='rgba(0,0,0,.35)';
+  ctx.fillRect(0,0,W,y);ctx.fillRect(0,y+h,W,H-y-h);ctx.fillRect(0,y,x,h);ctx.fillRect(x+w,y,W-x-w,h);
+  ctx.strokeStyle='#22d3ee';ctx.lineWidth=2;ctx.setLineDash([8,6]);ctx.strokeRect(x,y,w,h);ctx.setLineDash([]);
+  ctx.fillStyle='#22d3ee';ctx.font='600 10px system-ui';ctx.textBaseline='top';ctx.fillText(r.name,x+5,y+5)}
+function drawRoiPreview(W,H){const x1=Math.min(roiStart.x,roiCurrent.x)*W,y1=Math.min(roiStart.y,roiCurrent.y)*H,x2=Math.max(roiStart.x,roiCurrent.x)*W,y2=Math.max(roiStart.y,roiCurrent.y)*H;
+  ctx.fillStyle='rgba(34,211,238,.15)';ctx.fillRect(x1,y1,x2-x1,y2-y1);ctx.strokeStyle='#22d3ee';ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.strokeRect(x1,y1,x2-x1,y2-y1);ctx.setLineDash([])}
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function drawDetections(W,H){
+  let vis=0;
+  for(const d of lastDetections){
+    const x=d.bbox[0]*W,y=d.bbox[1]*H,w=d.bbox[2]*W,h=d.bbox[3]*H;if(w<6||h<6)continue;vis++;
+    const info=CLS[d.label]||CLS.animal;const color=d.inRoi?info.color:'rgba(120,140,160,.55)';
+    ctx.lineWidth=2;ctx.strokeStyle=color;roundRect(x,y,w,h,6);ctx.stroke();
+    const tr=tracks.find(t=>t.id===d.trackId);
+    const mark=tr&&tr.counted&&d.label!=='ignore'?'✓ ':'';
+    const text=`${mark}${info.emoji}${info.name} %${(d.score*100).toFixed(0)}${d.dist?` ≈${d.dist.toFixed(1)}m`:''}`;
+    ctx.font='600 11px system-ui';const tw=ctx.measureText(text).width,pad=6,th=18,tx=x,ty=Math.max(0,y-th-3);
+    ctx.fillStyle='rgba(10,14,19,.85)';roundRect(tx,ty,tw+pad*2,th,5);ctx.fill();
+    ctx.fillStyle=color;ctx.textBaseline='middle';ctx.fillText(text,tx+pad,ty+th/2+1);
+  }
+  els.hudVisible.textContent=vis;
+}
+function drawHeatmap(W,H){const g=4,cw=W/g,ch=H/g,c=Array.from({length:g},()=>Array(g).fill(0));let m=1;
+  for(const d of lastDetections){const gx=Math.min(g-1,Math.floor((d.bbox[0]+d.bbox[2]/2)*W/cw)),gy=Math.min(g-1,Math.floor((d.bbox[1]+d.bbox[3]/2)*H/ch));c[gy][gx]++;m=Math.max(m,c[gy][gx])}
+  for(let y=0;y<g;y++)for(let x=0;x<g;x++){const v=c[y][x]/m;if(v<.05)continue;ctx.fillStyle=`rgba(34,211,238,${Math.min(.5,v*.6)})`;ctx.fillRect(x*cw,y*ch,cw,ch)}}
+
+/* ================= İSTATİSTİK ================= */
+function updateStatsUI(){
+  els.statTotal.textContent=totalCount;els.hudTotal.textContent=totalCount;
+  const ent=Object.entries(speciesCounts).filter(([_,v])=>v>0);
+  els.statsList.innerHTML=ent.length?ent.sort((a,b)=>b[1]-a[1]).map(([k,v])=>{const i=CLS[k]||CLS.animal;
+    return `<div class="stat-row" style="border-left-color:${i.color}"><span>${i.emoji} ${i.name}</span><b>${v}</b></div>`}).join('')
+    :'<div class="stat-row empty">Henüz hayvan sayılmadı</div>';
+  if(speciesCounts.animal)els.statsList.insertAdjacentHTML('beforeend','<div class="note">“Hayvan (?)” = türü belirlenemedi. Öğret sekmesinden örnek ekle veya kutuya dokunup düzelt.</div>');
+}
+function resetCounts(){tracks=[];nextTrackId=1;counted.clear();totalCount=0;speciesCounts={};lastDetections=[];sessionStart=nowMs();updateStatsUI();redraw()}
+
+/* ================= SES ================= */
+function beep(f=880,d=70){try{if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.frequency.value=f;g.gain.setValueAtTime(.1,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+d/1000);o.connect(g).connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+d/1000)}catch(_){}}
+function speak(t){if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(t);u.lang='tr-TR';speechSynthesis.speak(u)}}
+
+/* ================= FOTOĞRAF ================= */
+async function takePhoto(){
+  if(!videoTrack||photoBusy)return;photoBusy=true;setStatus('','<span class="spinner"></span>Çekiliyor…');
+  try{
+    let blob=nightAvgOn?await takeNightAverage():await takeSinglePhoto();
+    if(!blob){toast('Fotoğraf alınamadı');return}
+    const wb=await addWatermark(blob);
+    downloadBlob(wb,`IMG_${stamp()}.${settings.format==='image/png'?'png':'jpg'}`);
+    toast(`✓ Fotoğraf (${(wb.size/1048576).toFixed(1)} MB)`);beep(1320,90);
+  }catch(e){toast('Fotoğraf hatası')}finally{photoBusy=false;setStatus('Aktif')}
+}
+async function takeSinglePhoto(){
+  const c=document.createElement('canvas');c.width=els.video.videoWidth;c.height=els.video.videoHeight;c.getContext('2d').drawImage(els.video,0,0);
+  return new Promise(r=>c.toBlob(r,settings.format,settings.quality/100));
+}
+async function takeNightAverage(){
+  const c=document.createElement('canvas');c.width=els.video.videoWidth;c.height=els.video.videoHeight;const cx=c.getContext('2d',{willReadFrequently:true});
+  const N=6;let acc=null;
+  for(let i=0;i<N;i++){cx.drawImage(els.video,0,0);const d=cx.getImageData(0,0,c.width,c.height).data;if(!acc)acc=new Float32Array(d.length);for(let p=0;p<d.length;p++)acc[p]+=d[p];await new Promise(r=>setTimeout(r,80))}
+  const out=cx.createImageData(c.width,c.height);for(let p=0;p<acc.length;p+=4){out.data[p]=acc[p]/N;out.data[p+1]=acc[p+1]/N;out.data[p+2]=acc[p+2]/N;out.data[p+3]=255}
+  cx.putImageData(out,0,0);return new Promise(r=>c.toBlob(r,settings.format,settings.quality/100));
+}
+async function addWatermark(blob){
+  const img=await createImageBitmap(blob),c=document.createElement('canvas');c.width=img.width;c.height=img.height;const cx=c.getContext('2d');cx.drawImage(img,0,0);
+  const d=new Date(),p=n=>String(n).padStart(2,'0');let txt=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  if(gpsPos)txt+=`  ${gpsPos.lat.toFixed(5)}, ${gpsPos.lng.toFixed(5)}`;
+  txt+=`  Sayım: ${totalCount}`;
+  const fs=Math.max(14,img.width*.018);cx.font=`600 ${fs}px system-ui,sans-serif`;const tw=cx.measureText(txt).width;
+  cx.fillStyle='rgba(0,0,0,.55)';cx.fillRect(10,img.height-fs-24,tw+20,fs+16);cx.fillStyle='#fff';cx.fillText(txt,20,img.height-fs-8);
+  return new Promise(r=>c.toBlob(r,settings.format,settings.quality/100));
+}
+function toggleBurst(on){burstOn=on;els.swBurst.classList.toggle('on',on);clearInterval(burstTimer);burstTimer=null;if(on){burstTimer=setInterval(()=>{if(running)takePhoto()},800);toast('Seri çekim açık',1500)}}
+function toggleTimelapse(s){timelapseSec=s;clearInterval(timelapseTimer);timelapseTimer=null;if(s>0){timelapseTimer=setInterval(()=>{if(running)takePhoto()},s*1000);toast(`Time-lapse ${s} sn`,1500)}}
+
+/* ================= VİDEO KAYIT ================= */
+let rec=null,recChunks=[],isRec=false;
+function pickMime(){return['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m))||''}
+function startRec(){if(!stream||isRec)return;const mime=pickMime(),o={videoBitsPerSecond:settings.bitrate};if(mime)o.mimeType=mime;
+  try{rec=new MediaRecorder(stream,o)}catch(e){return toast('Kayıt başlatılamadı')}
+  recChunks=[];rec.ondataavailable=e=>{if(e.data.size)recChunks.push(e.data)};
+  rec.onstop=()=>{const b=new Blob(recChunks,{type:rec.mimeType||'video/webm'});downloadBlob(b,`VID_${stamp()}.${(rec.mimeType||'').includes('mp4')?'mp4':'webm'}`);toast(`✓ Video (${(b.size/1048576).toFixed(1)} MB)`)};
+  rec.start(1000);isRec=true;els.btnRec.textContent='⏹ Kaydı Bitir';els.btnRec.classList.add('danger');setStatus('','<span style="color:#ff3b30">● KAYIT</span>')}
+function stopRec(){if(rec&&rec.state!=='inactive')rec.stop();isRec=false;els.btnRec.textContent='⏺ Video Kaydı';els.btnRec.classList.remove('danger');setStatus('Aktif')}
+
+/* ================= VİDEO ANALİZ ================= */
+async function startVideoAnalyze(){
+  const f=els.videoFile.files[0];if(!f)return;
+  if(!running)return toast('Önce kamerayı başlat (modeller yüklensin)');
+  els.analysisVideo.src=URL.createObjectURL(f);els.analysisVideo.classList.add('on');els.video.classList.add('off');analysisMode=true;
+  try{await els.analysisVideo.play()}catch(e){analysisMode=false;els.analysisVideo.classList.remove('on');els.video.classList.remove('off');return toast('Video oynatılamadı')}
+  layout();els.analyzeStatus.textContent='Analiz ediliyor…';els.btnStartAnalyze.disabled=true;els.btnStopAnalyze.disabled=false;closeAllModals();
+}
+function stopVideoAnalyze(){analysisMode=false;els.analysisVideo.pause();els.analysisVideo.classList.remove('on');els.video.classList.remove('off');
+  els.btnStartAnalyze.disabled=!els.videoFile.files.length;els.btnStopAnalyze.disabled=true;els.analyzeStatus.textContent='Durduruldu';layout()}
+
+/* ================= GPS ================= */
+async function initGps(){try{const p=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:true,timeout:8000}));gpsPos={lat:p.coords.latitude,lng:p.coords.longitude}}catch(_){gpsPos=null}}
+
+/* ================= INDEXEDDB ================= */
+let dbP=null;
+function openDb(){if(dbP)return dbP;dbP=new Promise((res,rej)=>{const r=indexedDB.open('koyun-db',2);
+  r.onupgradeneeded=e=>{const d=e.target.result;if(!d.objectStoreNames.contains('sessions'))d.createObjectStore('sessions',{keyPath:'id',autoIncrement:true});
+    if(!d.objectStoreNames.contains('samples'))d.createObjectStore('samples',{keyPath:'id',autoIncrement:true})};
+  r.onsuccess=e=>res(e.target.result);r.onerror=()=>rej(r.error)});return dbP}
+function idb(store,mode,fn){return openDb().then(d=>new Promise((res,rej)=>{const tx=d.transaction(store,mode),r=fn(tx.objectStore(store));tx.oncomplete=()=>res(r&&r.result);tx.onerror=()=>rej(tx.error)}))}
+const saveSession=data=>idb('sessions','readwrite',s=>s.add({...data,ts:Date.now(),gps:gpsPos})).catch(()=>{});
+const getSessions=()=>idb('sessions','readonly',s=>s.getAll()).then(x=>x||[]).catch(()=>[]);
+async function loadSamples(){try{const all=await idb('samples','readonly',s=>s.getAll());samples=(all||[]).filter(x=>x.e&&x.l).map(x=>({l:x.l,e:new Float32Array(x.e)}))}catch(_){samples=[]}updateTeachUI()}
+async function clearSamples(){samples=[];try{await idb('samples','readwrite',s=>s.clear())}catch(_){}updateTeachUI()}
+const speciesText=sp=>Object.entries(sp||{}).map(([k,v])=>`${(CLS[k]||CLS.animal).name} ${v}`).join(' · ');
+async function showHistory(){const s=await getSessions();
+  els.historyList.innerHTML=s.length?s.reverse().map(x=>`<div class="stat-row"><span>${new Date(x.ts).toLocaleString('tr-TR')}<br><small style="color:var(--mut)">${speciesText(x.species)}</small></span><b>${x.count??''}</b></div>`).join(''):'<div class="stat-row empty">Geçmiş boş (Sayım sekmesinden “Sayımı Kaydet”)</div>';
+  openModal(els.mHistory)}
+
+/* ================= DIŞA AKTARIM ================= */
+function rowsForExport(){return Object.entries(speciesCounts).filter(([_,v])=>v>0).map(([k,v])=>[(CLS[k]||CLS.animal).name,v])}
+function exportCsv(){const rows=[['Tür','Adet','Zaman']],now=new Date().toLocaleString('tr-TR');rowsForExport().forEach(r=>rows.push([...r,now]));rows.push(['TOPLAM',totalCount,now]);
+  downloadBlob(new Blob(['﻿'+rows.map(r=>r.join(';')).join('\n')],{type:'text/csv;charset=utf-8'}),`sayim-${stamp()}.csv`);toast('CSV indirildi')}
+function exportPdf(){if(!window.jspdf)return toast('PDF kütüphanesi yüklenemedi');const doc=new window.jspdf.jsPDF();
+  doc.setFontSize(16);doc.text('Sayim Raporu',14,20);doc.setFontSize(10);doc.text('Tarih: '+new Date().toLocaleString('tr-TR'),14,30);
+  let y=42;doc.text('Tur',14,y);doc.text('Adet',120,y);y+=6;rowsForExport().forEach(([k,v])=>{doc.text(asciiTr(k),14,y);doc.text(String(v),120,y);y+=6});
+  doc.setFontSize(12);doc.text('TOPLAM: '+totalCount,14,y+6);if(gpsPos)doc.text(`Konum: ${gpsPos.lat.toFixed(5)}, ${gpsPos.lng.toFixed(5)}`,14,y+16);
+  doc.save(`sayim-${stamp()}.pdf`);toast('PDF indirildi')}
+function showQr(){if(typeof QRCode==='undefined')return toast('QR kütüphanesi yüklenemedi');
+  els.qrBox.innerHTML='';new QRCode(els.qrBox,{text:`Sayim ${new Date().toLocaleDateString('tr-TR')} Toplam:${totalCount} ${asciiTr(speciesText(speciesCounts))}`,width:180,height:180});openModal(els.mQr)}
+function showTrend(){const c=els.trendCanvas.getContext('2d'),W=els.trendCanvas.width,H=els.trendCanvas.height;
+  c.clearRect(0,0,W,H);c.fillStyle='#0e1520';c.fillRect(0,0,W,H);c.textAlign='center';
+  const ent=Object.entries(speciesCounts).filter(([_,v])=>v>0);
+  if(!ent.length){c.fillStyle='#7d93a8';c.font='12px sans-serif';c.fillText('Veri yok',W/2,H/2);openModal(els.mTrend);return}
+  const max=Math.max(...ent.map(e=>e[1])),bw=(W-40)/ent.length,base=H-26;
+  ent.forEach(([k,v],i)=>{const h=(v/max)*(H-60),x=20+i*bw,inf=CLS[k]||CLS.animal;c.fillStyle=inf.color;c.fillRect(x+6,base-h,bw-12,h);c.fillStyle='#e6eef7';c.font='12px sans-serif';c.fillText(v,x+bw/2,base-h-5);c.fillText(inf.name,x+bw/2,base+16)});
+  openModal(els.mTrend)}
+let mapI=null,mapLayer=null;
+async function showMap(){if(typeof L==='undefined')return toast('Harita kütüphanesi yüklenemedi');openModal(els.mMap);
+  const ss=(await getSessions()).filter(s=>s.gps);
+  setTimeout(()=>{if(!mapI){mapI=L.map('map').setView([39,35],6);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(mapI);mapLayer=L.layerGroup().addTo(mapI)}
+    mapI.invalidateSize();mapLayer.clearLayers();const pts=[];
+    ss.forEach(s=>{const m=L.marker([s.gps.lat,s.gps.lng]).addTo(mapLayer).bindPopup(`${new Date(s.ts).toLocaleString('tr-TR')}<br>${s.count??''} — ${speciesText(s.species)}`);pts.push([s.gps.lat,s.gps.lng])});
+    if(gpsPos){L.circleMarker([gpsPos.lat,gpsPos.lng],{radius:7}).addTo(mapLayer).bindPopup('Şu anki konum');pts.push([gpsPos.lat,gpsPos.lng])}
+    if(pts.length)mapI.fitBounds(pts,{maxZoom:14,padding:[20,20]});
+    els.mapList.innerHTML=ss.length?ss.slice().reverse().map(s=>`<div class="stat-row">📍 ${new Date(s.ts).toLocaleString('tr-TR')} — ${s.count??''}</div>`).join(''):'<div class="stat-row empty">Konumlu kayıt yok (GPS izni + Sayımı Kaydet)</div>'},250)}
+
+/* ================= EĞİTİM YEDEĞİ ================= */
+const b64=buf=>{let s='';const u=new Uint8Array(buf);for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(s)};
+const unb64=t=>{const s=atob(t),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u.buffer};
+function exportTrain(){if(!samples.length)return toast('Kayıtlı örnek yok');
+  downloadBlob(new Blob([JSON.stringify({v:1,dim:samples[0].e.length,s:samples.map(s=>({l:s.l,e:b64(s.e.buffer)}))})],{type:'application/json'}),`egitim-${stamp()}.json`);toast('Eğitim yedeği indirildi')}
+async function importTrain(file){try{const j=JSON.parse(await file.text());if(!j.s)throw 0;let n=0;
+  for(const x of j.s){if(!CLS[x.l])continue;const e=new Float32Array(unb64(x.e));if(samples.length&&e.length!==samples[0].e.length)continue;samples.push({l:x.l,e});idb('samples','readwrite',s=>s.add({l:x.l,e:e.buffer.slice(0)})).catch(()=>{});n++}
+  updateTeachUI();toast(n+' örnek yüklendi')}catch(_){toast('Geçersiz yedek dosyası')}}
+
+/* ================= TEMA / SESLİ KOMUT ================= */
+function toggleTheme(){currentTheme=currentTheme==='dark'?'light':'dark';document.body.classList.toggle('light',currentTheme==='light');els.btnTheme.textContent=currentTheme==='light'?'🌙':'☀️';saveSettings()}
+function toggleBigUi(){bigUi=!bigUi;document.body.classList.toggle('big-ui',bigUi);els.btnBigUi.classList.toggle('on',bigUi);saveSettings()}
+let recog=null;
+function toggleVoice(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return toast('Sesli komut bu tarayıcıda yok');
+  if(recog){recog.stop();recog=null;els.btnVoice.classList.remove('on');return toast('Sesli komut kapandı',1200)}
+  recog=new SR();recog.lang='tr-TR';recog.continuous=true;
+  recog.onresult=e=>{const t=e.results[e.results.length-1][0].transcript.toLowerCase();
+    if(t.includes('çek')||t.includes('foto'))takePhoto();else if(t.includes('kayıt'))isRec?stopRec():startRec();else if(t.includes('sıfırla'))resetCounts();else if(t.includes('say')||t.includes('kaç'))speakCount()};
+  recog.onend=()=>{if(recog)try{recog.start()}catch(_){}};recog.start();els.btnVoice.classList.add('on');toast('🎤 Komutlar: çek · kayıt · sıfırla · kaç',2800)}
+const speakCount=()=>speak(`${totalCount} hayvan sayıldı. ${speciesText(speciesCounts)}`);
+
+/* ================= MODAL ================= */
+function openModal(m){closeAllModals();m.classList.add('show');els.modalBack.classList.add('show')}
+function closeAllModals(){document.querySelectorAll('.modal').forEach(x=>x.classList.remove('show'));els.modalBack.classList.remove('show')}
+els.modalBack.addEventListener('click',closeAllModals);
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',closeAllModals));
+
+/* ================= UI OLAYLARI ================= */
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab,.tab-content').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');document.querySelector(`.tab-content[data-content="${t.dataset.tab}"]`).classList.add('active');setTimeout(layout,50)}));
+const sw=(el,get,set,after)=>el.addEventListener('click',()=>{set(!get());el.classList.toggle('on',get());after&&after();saveSettings()});
+sw(els.swSound,()=>soundOn,v=>soundOn=v);sw(els.swNightDetect,()=>nightDetect,v=>nightDetect=v);sw(els.swAnomaly,()=>anomalyOn,v=>anomalyOn=v);
+sw(els.swNightAvg,()=>nightAvgOn,v=>nightAvgOn=v);sw(els.swMultiRoi,()=>multiRoiOn,v=>multiRoiOn=v);sw(els.swHeatmap,()=>heatmapOn,v=>heatmapOn=v,redraw);
+els.swBurst.addEventListener('click',()=>toggleBurst(!burstOn));
+els.timelapseSec.addEventListener('change',e=>toggleTimelapse(+e.target.value));
+els.score.addEventListener('input',e=>{els.scoreOut.textContent=(+e.target.value).toFixed(2);saveSettings()});
+els.confirm.addEventListener('input',e=>{els.confirmOut.textContent=e.target.value;confirmFrames=+e.target.value;saveSettings()});
+els.fov.addEventListener('input',e=>{els.fovOut.textContent=(+e.target.value)+'°';saveSettings()});
+els.width.addEventListener('input',e=>{els.widthOut.textContent=(+e.target.value).toFixed(2);saveSettings()});
+els.simT.addEventListener('input',e=>{simT=+e.target.value;els.simOut.textContent=simT.toFixed(2);saveSettings()});
+els.zoom.addEventListener('input',e=>setZoom(+e.target.value));
+els.modelBase.addEventListener('change',async()=>{modelBase=els.modelBase.value;saveSettings();if(!running)return;
+  setStatus('','<span class="spinner"></span>Model…');try{coco=await cocoSsd.load({base:modelBase});toast('Model değişti')}catch(_){toast('Model yüklenemedi')}setStatus('Aktif')});
+els.btnTorch.addEventListener('click',toggleTorch);
+els.btnGrid.addEventListener('click',()=>{gridOn=!gridOn;els.btnGrid.classList.toggle('on',gridOn);redraw();saveSettings()});
+els.btnNight.addEventListener('click',()=>{nightOn=!nightOn;els.btnNight.classList.toggle('on',nightOn);els.video.classList.toggle('night',nightOn);els.analysisVideo.classList.toggle('night',nightOn);saveSettings()});
+els.btnRoi.addEventListener('click',()=>{if(rois.length){rois=[];els.btnRoi.classList.remove('on');redraw();saveSettings();toast('Bölgeler temizlendi')}else setRoiMode('drawing')});
+els.btnShot.addEventListener('click',takePhoto);
+els.btnTheme.addEventListener('click',toggleTheme);
+els.btnResetZoom.addEventListener('click',()=>setZoom(1));
+els.btnReset.addEventListener('click',()=>{if(confirm('Sayaç sıfırlansın mı? (Öğretilen örnekler silinmez)')){resetCounts();toast('Sıfırlandı')}});
+els.btnSaveCount.addEventListener('click',async()=>{if(!totalCount)return toast('Kaydedilecek sayım yok');await saveSession({type:'count',count:totalCount,species:{...speciesCounts}});toast('Sayım kaydedildi ✓')});
+els.btnCsv.addEventListener('click',exportCsv);els.btnPdf.addEventListener('click',exportPdf);els.btnHistory.addEventListener('click',showHistory);
+els.btnMap.addEventListener('click',showMap);els.btnTrend.addEventListener('click',showTrend);els.btnQr.addEventListener('click',showQr);
+els.btnClearHistory.addEventListener('click',async()=>{if(!confirm('Geçmiş silinsin mi?'))return;await idb('sessions','readwrite',s=>s.clear()).catch(()=>{});showHistory()});
+els.btnVideoAnalyze.addEventListener('click',()=>openModal(els.mVideo));
+els.btnStartAnalyze.addEventListener('click',startVideoAnalyze);els.btnStopAnalyze.addEventListener('click',stopVideoAnalyze);
+els.videoFile.addEventListener('change',()=>{els.btnStartAnalyze.disabled=!els.videoFile.files.length});
+els.btnRec.addEventListener('click',()=>isRec?stopRec():startRec());
+els.btnWizard.addEventListener('click',()=>{openModal(els.mWizard);wizStep=0;renderWiz()});
+els.btnBigUi.addEventListener('click',toggleBigUi);els.btnCalib.addEventListener('click',()=>openModal(els.mCalib));
+els.btnVoice.addEventListener('click',toggleVoice);els.btnTts.addEventListener('click',()=>{speakCount();toast('Okunuyor…')});
+els.btnSettings.addEventListener('click',()=>{syncSettingsUi();openModal(els.mSettings)});els.btnAbout.addEventListener('click',()=>openModal(els.mAbout));
+els.btnSaveSettings.addEventListener('click',async()=>{const [w,h]=els.resSelect.value.split('x').map(Number);const camChanged=w!==settings.resW||h!==settings.resH||+els.fpsSelect.value!==settings.fps;
+  Object.assign(settings,{resW:w,resH:h,fps:+els.fpsSelect.value,format:els.formatSelect.value,quality:+els.qualitySlider.value,bitrate:+els.bitrateSelect.value});saveSettings();closeAllModals();
+  if(camChanged&&stream&&!isRec){try{await startCamera();toast('Ayarlar uygulandı')}catch(e){toast('Kamera yeniden başlatılamadı')}}else toast('Ayarlar kaydedildi')});
+els.qualitySlider.addEventListener('input',()=>{els.qualityOut.textContent=els.qualitySlider.value});
+els.btnCalibCalc.addEventListener('click',()=>{const real=+els.calibReal.value/100,dist=+els.calibDist.value/100,px=+els.calibPx.value;if(!real||!dist||!px)return;
+  calibFocal=px*dist/real;els.calibResult.textContent=`Odak: ${calibFocal.toFixed(1)} px — kalibre edildi`;saveSettings()});
+els.btnAllGoat.addEventListener('click',()=>labelAll('goat'));els.btnAllSheep.addEventListener('click',()=>labelAll('sheep'));
+els.btnAllCow.addEventListener('click',()=>labelAll('cow'));els.btnAllIgnore.addEventListener('click',()=>labelAll('ignore'));
+els.btnExportTrain.addEventListener('click',exportTrain);els.btnImportTrain.addEventListener('click',()=>els.trainFile.click());
+els.trainFile.addEventListener('change',()=>{if(els.trainFile.files[0])importTrain(els.trainFile.files[0]);els.trainFile.value=''});
+els.btnClearTrain.addEventListener('click',async()=>{if(!confirm('Öğretilen tüm örnekler silinsin mi?'))return;await clearSamples();tracks.forEach(t=>{t.forced=null;t.votes={};t.label='animal'});toast('Eğitim silindi')});
+
+/* ================= AYARLAR ================= */
+const KEY='koyun-sayac-v4';
+function saveSettings(){try{localStorage.setItem(KEY,JSON.stringify({score:els.score.value,fov:els.fov.value,width:els.width.value,confirm:els.confirm.value,grid:gridOn,night:nightOn,sound:soundOn,nightDetect,anomalyOn,nightAvgOn,multiRoiOn,heatmapOn,theme:currentTheme,bigUi,rois,calibFocal,simT,modelBase,...settings}))}catch(_){}}
+function loadSettings(){try{const s=JSON.parse(localStorage.getItem(KEY)||'{}');
+  if(s.score)els.score.value=s.score;if(s.fov)els.fov.value=s.fov;if(s.width)els.width.value=s.width;if(s.confirm)els.confirm.value=s.confirm;
+  if(Array.isArray(s.rois))rois=s.rois;gridOn=!!s.grid;nightOn=!!s.night;soundOn=s.sound!==false;nightDetect=!!s.nightDetect;anomalyOn=!!s.anomalyOn;nightAvgOn=!!s.nightAvgOn;multiRoiOn=!!s.multiRoiOn;heatmapOn=!!s.heatmapOn;
+  currentTheme=s.theme||'dark';bigUi=!!s.bigUi;calibFocal=s.calibFocal||null;if(s.simT)simT=s.simT;if(s.modelBase)modelBase=s.modelBase;
+  for(const k of['resW','resH','fps','format','quality','bitrate'])if(s[k])settings[k]=s[k]}catch(_){}
+  els.scoreOut.textContent=(+els.score.value).toFixed(2);els.fovOut.textContent=els.fov.value+'°';els.widthOut.textContent=(+els.width.value).toFixed(2);els.confirmOut.textContent=els.confirm.value;confirmFrames=+els.confirm.value;
+  els.simT.value=simT;els.simOut.textContent=simT.toFixed(2);els.modelBase.value=modelBase;
+  els.swSound.classList.toggle('on',soundOn);els.swNightDetect.classList.toggle('on',nightDetect);els.swAnomaly.classList.toggle('on',anomalyOn);els.swNightAvg.classList.toggle('on',nightAvgOn);
+  els.swMultiRoi.classList.toggle('on',multiRoiOn);els.swHeatmap.classList.toggle('on',heatmapOn);els.btnGrid.classList.toggle('on',gridOn);els.btnNight.classList.toggle('on',nightOn);els.btnRoi.classList.toggle('on',rois.length>0);
+  els.video.classList.toggle('night',nightOn);document.body.classList.toggle('light',currentTheme==='light');els.btnTheme.textContent=currentTheme==='light'?'🌙':'☀️';
+  document.body.classList.toggle('big-ui',bigUi);els.btnBigUi.classList.toggle('on',bigUi)}
+function syncSettingsUi(){els.resSelect.value=`${settings.resW}x${settings.resH}`;if(!els.resSelect.value)els.resSelect.value='1280x720';els.fpsSelect.value=String(settings.fps);els.formatSelect.value=settings.format;els.qualitySlider.value=settings.quality;els.qualityOut.textContent=settings.quality;els.bitrateSelect.value=String(settings.bitrate)}
+
+/* ================= REHBER ================= */
+let wizStep=0;const WIZ_N=4;
+function renderWiz(){document.querySelectorAll('#wizard .step').forEach((s,i)=>s.classList.toggle('on',i===wizStep));
+  els.wizDots.innerHTML=Array.from({length:WIZ_N},(_,i)=>`<span class="${i===wizStep?'on':''}"></span>`).join('');els.wizPrev.disabled=wizStep===0;els.wizNext.textContent=wizStep===WIZ_N-1?'Bitti':'İleri'}
+els.wizPrev.addEventListener('click',()=>{if(wizStep>0){wizStep--;renderWiz()}});
+els.wizNext.addEventListener('click',()=>{if(wizStep<WIZ_N-1){wizStep++;renderWiz()}else closeAllModals()});
+
+/* ================= BAŞLAT ================= */
+els.btnStart.addEventListener('click',async()=>{
+  els.btnStart.disabled=true;els.splashErr.textContent='';setStatus('Kamera açılıyor…');
+  try{await startCamera()}catch(err){els.splashErr.textContent='Kamera hatası: '+(err.message||err);els.btnStart.disabled=false;setStatus('Kamera hatası');return}
+  initGps();
+  setStatus('','<span class="spinner"></span>Modeller yükleniyor…');
+  try{
+    if(typeof cocoSsd==='undefined')throw new Error('COCO-SSD kütüphanesi yüklenemedi (internet?)');
+    const jobs=[cocoSsd.load({base:modelBase})];
+    if(typeof mobilenet!=='undefined')jobs.push(mobilenet.load({version:2,alpha:1.0}).catch(e=>{console.warn(e);return null}));
+    const [c,m]=await Promise.all(jobs);coco=c;mobNet=m||null;
+    if(!mobNet)toast('Tür öğrenme modeli yüklenemedi — sadece “Hayvan” sayılır',3500);
+  }catch(err){els.splashErr.textContent='Model hatası: '+(err.message||err);els.btnStart.disabled=false;setStatus('Hata');return}
+  els.splash.style.opacity='0';setTimeout(()=>els.splash.classList.add('hidden'),300);
+  running=true;sessionStart=nowMs();setStatus('Aktif');updateTeachUI();
+  setInterval(()=>{if(running)els.statTime.textContent=fmtTime(nowMs()-sessionStart)},500);
+  requestAnimationFrame(loop);
+  try{if(!localStorage.getItem('wizard-done4')){openModal(els.mWizard);wizStep=0;renderWiz();localStorage.setItem('wizard-done4','1')}}catch(_){}
+});
+
+/* ================= INIT ================= */
+loadSettings();updateStatsUI();updateZoomLabel();layout();renderWiz();loadSamples();
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&isRec)stopRec()});
+window.__kece={get samples(){return samples},get tracks(){return tracks},get counts(){return{speciesCounts,totalCount}},step,classifierReady,addSamples,labelAll};
+})();
+</script>
+</body>
+</html>
